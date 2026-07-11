@@ -50,10 +50,18 @@ async def reorder_itinerary(
     runtime = await get_runtime()
     itinerary = body.itinerary
     await revalidate_itinerary(itinerary)  # recompute transit + feasibility
-    await runtime.graph.aupdate_state(
-        {"configurable": {"thread_id": session_id}},
-        {"itinerary": itinerary, "context": {"logistics_done": True}},
-    )
+    try:
+        # Attribute the write to logistics (it just re-validated the reordered plan);
+        # best-effort so a fresh/edge-case thread still returns the updated plan.
+        await runtime.graph.aupdate_state(
+            {"configurable": {"thread_id": session_id}},
+            {"itinerary": itinerary, "context": {"logistics_done": True}},
+            as_node="logistics",
+        )
+    except Exception as e:  # pragma: no cover
+        from odyssey.core.logging import get_logger
+
+        get_logger(__name__).warning("reorder.persist_failed", error=str(e))
     return {"itinerary": itinerary}
 
 
