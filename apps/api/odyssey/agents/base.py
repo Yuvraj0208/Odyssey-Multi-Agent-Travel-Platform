@@ -22,6 +22,7 @@ PLANNER = "trip_planner"
 LOGISTICS = "logistics"
 MEMORY = "memory"
 BOOKING = "booking"
+BOOKING_CONFIRM = "booking_confirm"  # internal HITL gate node (not a registered agent)
 SUPPORT = "support"
 
 T = TypeVar("T", bound=BaseModel)

@@ -25,6 +25,10 @@ class AgentSpec:
     # mission-control UI without routing to them yet.
     phase: int = 1
     tags: list[str] = field(default_factory=list)
+    # If True the node routes itself via Command(goto=...) and MUST always return a
+    # Command; build() will not add an automatic edge back to the supervisor (adding
+    # one would race the Command's goto and clash on shared state keys).
+    dynamic_routing: bool = False
 
 
 AGENT_REGISTRY: dict[str, AgentSpec] = {}

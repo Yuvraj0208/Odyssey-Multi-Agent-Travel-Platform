@@ -38,37 +38,25 @@ async def chat_stream(
 async def chat_resume(
     session_id: str, body: ResumeIn, user: CurrentUser = Depends(current_user)
 ):
-    """Resume a graph paused at a human-in-the-loop interrupt with the user's
-    decision. Streams the continuation as UIEvents.
-
-    Phase 1 wires the transport; the booking approval node that produces the
-    interrupt lands in Phase 3. Until then this returns a no-op stream so the
-    frontend contract is stable.
-    """
-    from langgraph.types import Command
-
-    from odyssey.core.observability import langfuse_config
-    from odyssey.graph.stream import _tool_summary  # noqa: F401  (kept for parity)
+    """Resume a graph paused at the human-in-the-loop approval gate with the user's
+    decision, streaming the continuation (confirmations + wrap-up) as UIEvents."""
+    from odyssey.graph.stream import resume_turn
+    from odyssey.schemas.events import ev_done, ev_error
 
     runtime = await get_runtime()
-    config = {
-        "configurable": {"thread_id": session_id},
-        **langfuse_config(session_id, user.id),
-    }
+    decision = {"approved": body.approved, "note": body.note, "booking_id": body.booking_id}
 
     async def gen():
-        from odyssey.schemas.events import ev_done, ev_error
-
         try:
-            state = await runtime.graph.aget_state(config)
-            if not state or not state.next:
-                # nothing is interrupted; contract-safe no-op
-                yield ev_done(session_id).sse()
+            snapshot = await runtime.graph.aget_state(
+                {"configurable": {"thread_id": session_id}}
+            )
+            interrupted = bool(snapshot and getattr(snapshot, "interrupts", None))
+            if not interrupted:
+                yield ev_done(session_id).sse()  # contract-safe no-op
                 return
-            resume_value = {"approved": body.approved, "note": body.note, "booking_id": body.booking_id}
-            async for _ in runtime.graph.astream(Command(resume=resume_value), config=config):
-                pass
-            yield ev_done(session_id).sse()
+            async for ui in resume_turn(runtime, user.id, session_id, decision):
+                yield ui.sse()
         except Exception as e:  # pragma: no cover
             log.exception("resume.error", session_id=session_id)
             yield ev_error(None, f"Resume failed: {e}").sse()

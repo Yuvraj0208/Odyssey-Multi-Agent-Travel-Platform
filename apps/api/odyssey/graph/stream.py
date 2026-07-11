@@ -14,7 +14,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Any
 
-from odyssey.agents.base import SUPERVISOR, summarize
+from odyssey.agents.base import BOOKING_CONFIRM, SUPERVISOR, summarize
 from odyssey.core.logging import get_logger
 from odyssey.core.observability import langfuse_config
 from odyssey.core.telemetry import TOOL_CALLS, get_session_telemetry
@@ -25,10 +25,13 @@ from odyssey.schemas.events import (
     UIEvent,
     ev_agent_enter,
     ev_agent_exit,
+    ev_approval_required,
+    ev_booking_updated,
     ev_done,
     ev_error,
     ev_handoff,
     ev_message,
+    ev_options,
     ev_plan_updated,
     ev_session_start,
     ev_telemetry,
@@ -97,19 +100,46 @@ def _agents_public() -> list[dict]:
 async def stream_turn(
     runtime: GraphRuntime, user_id: str, session_id: str, text: str
 ) -> AsyncIterator[UIEvent]:
-    """Run one conversational turn and yield UIEvents."""
+    """Run one fresh conversational turn and yield UIEvents."""
+    yield ev_session_start(session_id, _agents_public())
+    inputs = turn_input(user_id, session_id, text)
+    async for ev in _run_stream(runtime, user_id, session_id, inputs):
+        yield ev
+
+
+async def resume_turn(
+    runtime: GraphRuntime, user_id: str, session_id: str, decision: dict
+) -> AsyncIterator[UIEvent]:
+    """Resume a graph paused at the approval gate with the user's decision."""
+    from langgraph.types import Command
+
+    async for ev in _run_stream(runtime, user_id, session_id, Command(resume=decision)):
+        yield ev
+
+
+def _extract_update(out: Any) -> dict | None:
+    """Node output is a dict, or a Command whose .update holds the state delta."""
+    if isinstance(out, dict):
+        return out
+    upd = getattr(out, "update", None)
+    return upd if isinstance(upd, dict) else None
+
+
+async def _run_stream(
+    runtime: GraphRuntime, user_id: str, session_id: str, graph_input: Any
+) -> AsyncIterator[UIEvent]:
     config = {
         "configurable": {"thread_id": session_id},
         **langfuse_config(session_id, user_id),
     }
-    inputs = turn_input(user_id, session_id, text)
     tel = get_session_telemetry(session_id)
     current_agent = SUPERVISOR
-
-    yield ev_session_start(session_id, _agents_public())
+    # booking_confirm is an internal gate (not a registered agent) but we still emit
+    # its messages/booking updates, attributed to the booking agent.
+    processable = known_agents() | {BOOKING_CONFIRM}
 
     try:
-        async for event in runtime.graph.astream_events(inputs, config=config, version="v2"):
+        async for event in runtime.graph.astream_events(graph_input, config=config, version="v2"):
             etype = event.get("event")
             name = event.get("name")
             tags = event.get("tags") or []
@@ -121,19 +151,25 @@ async def stream_turn(
                 tel.agent_steps += 1
                 yield ev_agent_enter(name)
 
-            elif etype == "on_chain_end" and name in known_agents():
-                out = data.get("output")
-                if isinstance(out, dict):
-                    for hv in out.get("tool_events", []) or []:
+            elif etype == "on_chain_end" and name in processable:
+                update = _extract_update(data.get("output"))
+                if update:
+                    for hv in update.get("tool_events", []) or []:
                         if hv.get("kind") == "handoff":
                             yield ev_handoff(hv["from"], hv["to"], hv.get("reason", ""))
-                    if out.get("itinerary"):
-                        yield ev_plan_updated(out["itinerary"])
-                    for m in out.get("messages", []) or []:
+                    if update.get("itinerary"):
+                        yield ev_plan_updated(update["itinerary"])
+                    if update.get("options"):
+                        yield ev_options(update["options"])
+                    if update.get("confirmed_bookings") is not None:
+                        yield ev_booking_updated(update["confirmed_bookings"])
+                    for m in update.get("messages", []) or []:
                         content = getattr(m, "content", None)
                         if content:
-                            yield ev_message(name, content if isinstance(content, str) else str(content))
-                yield ev_agent_exit(name)
+                            who = getattr(m, "name", None) or name
+                            yield ev_message(who, content if isinstance(content, str) else str(content))
+                if name in known_agents():
+                    yield ev_agent_exit(name)
 
             elif etype == "on_chat_model_stream":
                 text_chunk = _chunk_text(data.get("chunk"))
@@ -152,8 +188,7 @@ async def stream_turn(
                 yield ev_tool_start(agent, name or "tool", preview)
 
             elif etype == "on_tool_end":
-                out = data.get("output")
-                summary = _tool_summary(out)
+                summary = _tool_summary(data.get("output"))
                 TOOL_CALLS.labels(name or "tool", "ok").inc()
                 yield ev_tool_end(agent, name or "tool", summary, 0.0, True)
 
@@ -161,9 +196,20 @@ async def stream_turn(
         log.exception("stream.error", session_id=session_id)
         yield ev_error(current_agent, f"An agent step failed: {e}", "You can retry or refine your request.")
 
-    tel_snapshot = tel.snapshot()
-    yield ev_telemetry(tel_snapshot)
-    yield ev_done(session_id)
+    # If the graph paused at the human-in-the-loop gate, surface the approval request
+    # instead of ending the turn.
+    interrupts = []
+    try:
+        snapshot = await runtime.graph.aget_state(config)
+        interrupts = list(getattr(snapshot, "interrupts", None) or [])
+    except Exception:  # pragma: no cover
+        pass
+
+    yield ev_telemetry(tel.snapshot())
+    if interrupts:
+        yield ev_approval_required(interrupts[0].value)
+    else:
+        yield ev_done(session_id)
 
 
 def _tool_summary(out: Any) -> str:

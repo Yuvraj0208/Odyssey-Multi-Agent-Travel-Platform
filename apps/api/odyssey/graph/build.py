@@ -14,7 +14,8 @@ from typing import Any
 from langgraph.graph import END, START, StateGraph
 
 from odyssey.agents import bootstrap_agents
-from odyssey.agents.base import SUPERVISOR
+from odyssey.agents.base import BOOKING_CONFIRM, SUPERVISOR
+from odyssey.agents.booking import booking_confirm_node
 from odyssey.agents.supervisor import DONE, route_from_supervisor, supervisor_node
 from odyssey.core.logging import get_logger
 from odyssey.graph.registry import AGENT_REGISTRY
@@ -31,22 +32,23 @@ def build_graph(checkpointer: Any, store: Any):
     for name, spec in AGENT_REGISTRY.items():
         b.add_node(name, spec.build())
 
+    # Internal human-in-the-loop gate node (not a registered agent). The booking
+    # agent routes here via Command(goto); it pauses with a dynamic interrupt() for
+    # explicit approval, then returns to the supervisor.
+    b.add_node(BOOKING_CONFIRM, booking_confirm_node)
+
     b.add_edge(START, SUPERVISOR)
     b.add_conditional_edges(
         SUPERVISOR,
         route_from_supervisor,
         {**{n: n for n in AGENT_REGISTRY}, DONE: END},
     )
-    for name in AGENT_REGISTRY:
-        b.add_edge(name, SUPERVISOR)
+    for name, spec in AGENT_REGISTRY.items():
+        if not spec.dynamic_routing:  # dynamic agents route themselves via Command(goto)
+            b.add_edge(name, SUPERVISOR)
 
-    # Human-in-the-loop gate: pause before confirming a booking, if that node exists.
-    interrupt_before = ["booking_confirm"] if "booking_confirm" in AGENT_REGISTRY else []
-
-    graph = b.compile(
-        checkpointer=checkpointer,
-        store=store,
-        interrupt_before=interrupt_before,
-    )
-    log.info("graph.built", agents=list(AGENT_REGISTRY.keys()), interrupts=interrupt_before)
+    # The gate returns to the supervisor. The pause itself is a dynamic interrupt()
+    # inside the node, so no static interrupt_before is needed.
+    graph = b.compile(checkpointer=checkpointer, store=store)
+    log.info("graph.built", agents=list(AGENT_REGISTRY.keys()), gate=BOOKING_CONFIRM)
     return graph

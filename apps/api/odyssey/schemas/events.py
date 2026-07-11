@@ -24,7 +24,9 @@ class UIEventType(StrEnum):
     tool_end = "tool_end"
     handoff = "handoff"
     plan_updated = "plan_updated"
+    options = "options"
     approval_required = "approval_required"
+    booking_updated = "booking_updated"
     telemetry = "telemetry"
     error = "error"
     done = "done"
@@ -97,8 +99,16 @@ def ev_plan_updated(itinerary: dict) -> UIEvent:
     return UIEvent(type=UIEventType.plan_updated, data={"itinerary": itinerary})
 
 
-def ev_approval_required(booking: dict) -> UIEvent:
-    return UIEvent(type=UIEventType.approval_required, data={"booking": booking})
+def ev_options(options: dict) -> UIEvent:
+    return UIEvent(type=UIEventType.options, data={"options": options})
+
+
+def ev_approval_required(payload: dict) -> UIEvent:
+    return UIEvent(type=UIEventType.approval_required, data=payload)
+
+
+def ev_booking_updated(confirmed: list[dict]) -> UIEvent:
+    return UIEvent(type=UIEventType.booking_updated, data={"confirmed_bookings": confirmed})
 
 
 def ev_telemetry(snapshot: dict) -> UIEvent:
