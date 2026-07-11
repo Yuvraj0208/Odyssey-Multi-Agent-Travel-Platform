@@ -5,7 +5,7 @@ resilient structured-output call used across specialists.
 from __future__ import annotations
 
 import time
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, ToolMessage

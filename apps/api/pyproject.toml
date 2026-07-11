@@ -57,7 +57,7 @@ llm = [
 ]
 auth = [
   "pyjwt>=2.10",
-  "passlib[bcrypt]>=1.7.4",
+  "bcrypt>=4.2",
 ]
 dev = [
   "pytest>=8.3",
@@ -76,7 +76,8 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "ASYNC"]
-ignore = ["E501"]
+# E501: long lines OK; B008: FastAPI's Depends()/Header() defaults are idiomatic.
+ignore = ["E501", "B008"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

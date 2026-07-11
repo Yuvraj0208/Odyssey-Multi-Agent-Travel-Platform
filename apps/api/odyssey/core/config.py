@@ -85,6 +85,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     access_token_ttl_minutes: int = Field(default=1440, alias="ACCESS_TOKEN_TTL_MINUTES")
     rate_limit_per_minute: int = Field(default=60, alias="RATE_LIMIT_PER_MINUTE")
+    # When false (local demo default), routes accept an x-user-id header so the app
+    # works without login. When true, a valid JWT is required.
+    auth_required: bool = Field(default=False, alias="AUTH_REQUIRED")
 
     # ---- CORS ----
     cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")

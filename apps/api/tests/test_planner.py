@@ -1,6 +1,12 @@
 """Trip planner mapping + fallback tests (no LLM)."""
 
-from odyssey.agents.planner import PlanItem, PlanOutput, _fallback_itinerary, _num_days, _to_itinerary
+from odyssey.agents.planner import (
+    PlanItem,
+    PlanOutput,
+    _fallback_itinerary,
+    _num_days,
+    _to_itinerary,
+)
 
 BRIEF = {"destination": "Kyoto", "duration_days": 2, "pace": "balanced", "budget": {"currency": "USD"}}
 CTX = {

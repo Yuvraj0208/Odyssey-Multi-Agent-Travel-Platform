@@ -28,10 +28,10 @@ from odyssey.agents.base import (
 )
 from odyssey.core.logging import get_logger
 from odyssey.graph.registry import AgentSpec, register
+from odyssey.prompts.agents import BOOKING_INTENT
 from odyssey.providers.booking.tools import cancel_offer, confirm_offer, search_offers
 from odyssey.providers.llm_provider import get_chat_model
 from odyssey.schemas.booking import Booking, BookingStatus, BookingType
-from odyssey.prompts.agents import BOOKING_INTENT
 
 log = get_logger(__name__)
 

@@ -26,11 +26,14 @@ def _add_correlation_id(_logger, _name, event_dict):
 
 def configure_logging(level: str = "INFO", json_logs: bool = True) -> None:
     """Configure structlog + stdlib logging once at startup."""
+    from odyssey.core.guardrails import redact_pii_processor
+
     shared_processors = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
         _add_correlation_id,
+        redact_pii_processor,
         structlog.processors.StackInfoRenderer(),
     ]
 

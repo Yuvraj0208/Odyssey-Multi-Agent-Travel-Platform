@@ -19,7 +19,7 @@ def _item_id() -> str:
 
 
 def _now() -> _dt.datetime:
-    return _dt.datetime.now(_dt.timezone.utc)
+    return _dt.datetime.now(_dt.UTC)
 
 
 class Geo(BaseModel):

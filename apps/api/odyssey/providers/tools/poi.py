@@ -92,7 +92,6 @@ async def search_pois(
     """
     interests = interests or []
     selectors = _selectors_for(interests)
-    cat_by_sel = {sel: cat for sel, cat in selectors}
     query = _build_query(lat, lng, radius_m, selectors)
 
     data = None

@@ -25,10 +25,13 @@ log = get_logger(__name__)
 async def chat_stream(
     session_id: str, body: ChatIn, user: CurrentUser = Depends(current_user)
 ):
+    from odyssey.core.guardrails import clean_user_text
+
     runtime = await get_runtime()
+    text = clean_user_text(body.text)
 
     async def gen():
-        async for ui in stream_turn(runtime, user.id, session_id, body.text):
+        async for ui in stream_turn(runtime, user.id, session_id, text):
             yield ui.sse()
 
     return EventSourceResponse(gen())

@@ -77,6 +77,21 @@ def create_app() -> FastAPI:
         token = correlation_id.set(cid)
         start = time.perf_counter()
         path = request.url.path
+
+        # Rate limit the API surface (per user/IP), skipping ops + preflight.
+        if path.startswith("/api") and request.method != "OPTIONS":
+            from fastapi.responses import JSONResponse
+
+            from odyssey.core.ratelimit import client_key, get_limiter
+
+            if not get_limiter().allow(client_key(request)):
+                correlation_id.reset(token)
+                HTTP_REQUESTS.labels(request.method, path, "429").inc()
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Rate limit exceeded. Please slow down."},
+                    headers={"Retry-After": "5"},
+                )
         try:
             response = await call_next(request)
             status = response.status_code
@@ -135,6 +150,13 @@ def create_app() -> FastAPI:
         app.include_router(memory_router.router, prefix="/api")
     except Exception as e:  # pragma: no cover
         log.warning("router.memory.skipped", error=str(e))
+
+    try:
+        from odyssey.api import auth as auth_router
+
+        app.include_router(auth_router.router, prefix="/api")
+    except Exception as e:  # pragma: no cover
+        log.warning("router.auth.skipped", error=str(e))
 
     return app
 

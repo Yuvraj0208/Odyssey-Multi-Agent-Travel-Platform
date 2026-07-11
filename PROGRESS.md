@@ -96,7 +96,9 @@ Legend: [x] done and verified, [~] in progress, [ ] not started.
 - [x] Real telemetry (tokens/cost/latency) - latency now populated per turn
 - [x] Notifications inbox (Phase 2) + Trips history + Preferences slide-over
       (store-backed sessions index + memory CRUD API)
-- [ ] Verify LIVE in browser (node-graph animation, drag-reorder, trips/prefs)
+- [x] Verified LIVE in browser: node-graph renders 7 agents with done-checkmarks +
+      latency (32s); drag-to-reorder reorders + re-validates OSRM transit + persists
+      across reload (fixed aupdate_state as_node bug); trips + preferences panels
 
 ## Phase 5 - Hardening
 

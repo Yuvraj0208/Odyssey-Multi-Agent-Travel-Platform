@@ -18,10 +18,10 @@ from odyssey.prompts.agents import TRIP_PLANNER
 from odyssey.providers.llm_provider import get_chat_model
 from odyssey.schemas.trip import (
     Geo,
+    ItemType,
     Itinerary,
     ItineraryDay,
     ItineraryItem,
-    ItemType,
 )
 
 log = get_logger(__name__)
