@@ -1,3 +1,4 @@
+import { getToken } from "./auth";
 import type { AgentInfo, Notification, UIEvent } from "./types";
 
 // Same-origin in the browser (Next rewrites /api -> FastAPI). Server components
@@ -14,14 +15,50 @@ function userId(): string {
   return id;
 }
 
+// Every request carries the anon x-user-id (fallback) plus a Bearer token when
+// signed in; the backend prefers the JWT identity.
+function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  const token = getToken();
+  return {
+    "x-user-id": userId(),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra,
+  };
+}
+
 export async function createSession(): Promise<string> {
   const r = await fetch(`${BASE}/api/sessions`, {
     method: "POST",
-    headers: { "x-user-id": userId() },
+    headers: authHeaders(),
   });
   if (!r.ok) throw new Error("failed to create session");
   const j = await r.json();
   return j.session_id as string;
+}
+
+export interface AuthResult {
+  access_token: string;
+  user: { id: string; email: string; name?: string | null };
+}
+
+export async function authRegister(email: string, password: string, name?: string): Promise<AuthResult> {
+  const r = await fetch(`${BASE}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, name }),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || "Registration failed");
+  return r.json();
+}
+
+export async function authLogin(email: string, password: string): Promise<AuthResult> {
+  const r = await fetch(`${BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || "Login failed");
+  return r.json();
 }
 
 export async function getAgents(): Promise<AgentInfo[]> {
@@ -33,7 +70,7 @@ export async function getAgents(): Promise<AgentInfo[]> {
 
 export async function getSessionState(sessionId: string) {
   const r = await fetch(`${BASE}/api/sessions/${sessionId}/state`, {
-    headers: { "x-user-id": userId() },
+    headers: authHeaders(),
   });
   if (!r.ok) throw new Error("failed to load session");
   return r.json();
@@ -51,7 +88,7 @@ export async function streamChat(
 ): Promise<void> {
   const resp = await fetch(`${BASE}/api/chat/${sessionId}/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-user-id": userId() },
+    headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ text }),
     signal,
   });
@@ -69,7 +106,7 @@ export async function resumeChat(
 ): Promise<void> {
   const resp = await fetch(`${BASE}/api/chat/${sessionId}/resume`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-user-id": userId() },
+    headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(decision),
     signal,
   });
@@ -99,7 +136,7 @@ async function consumeUIEvents(resp: Response, onEvent: (ev: UIEvent) => void): 
 }
 
 export async function getNotifications(): Promise<Notification[]> {
-  const r = await fetch(`${BASE}/api/notifications`, { headers: { "x-user-id": userId() } });
+  const r = await fetch(`${BASE}/api/notifications`, { headers: authHeaders() });
   if (!r.ok) return [];
   const j = await r.json();
   return j.notifications as Notification[];
@@ -108,7 +145,7 @@ export async function getNotifications(): Promise<Notification[]> {
 export async function reorderItinerary(sessionId: string, itinerary: any): Promise<any> {
   const r = await fetch(`${BASE}/api/sessions/${sessionId}/reorder`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-user-id": userId() },
+    headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ itinerary }),
   });
   if (!r.ok) return null;
@@ -117,13 +154,13 @@ export async function reorderItinerary(sessionId: string, itinerary: any): Promi
 }
 
 export async function listSessions(): Promise<any[]> {
-  const r = await fetch(`${BASE}/api/sessions`, { headers: { "x-user-id": userId() } });
+  const r = await fetch(`${BASE}/api/sessions`, { headers: authHeaders() });
   if (!r.ok) return [];
   return (await r.json()).sessions ?? [];
 }
 
 export async function getMemories(): Promise<any[]> {
-  const r = await fetch(`${BASE}/api/memory`, { headers: { "x-user-id": userId() } });
+  const r = await fetch(`${BASE}/api/memory`, { headers: authHeaders() });
   if (!r.ok) return [];
   return (await r.json()).memories ?? [];
 }
@@ -131,7 +168,7 @@ export async function getMemories(): Promise<any[]> {
 export async function addMemory(text: string, kind = "preference", tags: string[] = []): Promise<void> {
   await fetch(`${BASE}/api/memory`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-user-id": userId() },
+    headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ text, kind, tags }),
   }).catch(() => {});
 }
@@ -139,14 +176,14 @@ export async function addMemory(text: string, kind = "preference", tags: string[
 export async function deleteMemory(key: string): Promise<void> {
   await fetch(`${BASE}/api/memory/${key}`, {
     method: "DELETE",
-    headers: { "x-user-id": userId() },
+    headers: authHeaders(),
   }).catch(() => {});
 }
 
 export async function recheckConditions(sessionId: string): Promise<{ issues: number }> {
   const r = await fetch(`${BASE}/api/sessions/${sessionId}/recheck`, {
     method: "POST",
-    headers: { "x-user-id": userId() },
+    headers: authHeaders(),
   });
   if (!r.ok) return { issues: 0 };
   return r.json();
@@ -155,7 +192,7 @@ export async function recheckConditions(sessionId: string): Promise<{ issues: nu
 export async function markNotificationRead(id: string): Promise<void> {
   await fetch(`${BASE}/api/notifications/${id}/read`, {
     method: "POST",
-    headers: { "x-user-id": userId() },
+    headers: authHeaders(),
   }).catch(() => {});
 }
 
@@ -165,7 +202,7 @@ export async function streamNotifications(
   signal?: AbortSignal,
 ): Promise<void> {
   const resp = await fetch(`${BASE}/api/notifications/stream`, {
-    headers: { "x-user-id": userId() },
+    headers: authHeaders(),
     signal,
   });
   if (!resp.ok || !resp.body) throw new Error("notifications stream failed");

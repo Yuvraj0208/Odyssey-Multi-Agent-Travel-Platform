@@ -11,7 +11,9 @@ import { AgentRail } from "./AgentRail";
 import { Toaster } from "./Toaster";
 import { ApprovalModal } from "./ApprovalModal";
 import { LibraryPanel, type LibraryTab } from "./LibraryPanel";
+import { AuthModal } from "./AuthModal";
 import { useNotifications } from "@/hooks/useNotifications";
+import { getAuthUser, clearAuth, type AuthUser } from "@/lib/auth";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +24,18 @@ export function Workspace() {
   const [ready, setReady] = useState(false);
   const [railOpen, setRailOpen] = useState(true);
   const [libraryTab, setLibraryTab] = useState<LibraryTab | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   useNotifications();
+
+  useEffect(() => {
+    setAuthUser(getAuthUser());
+  }, []);
+
+  function signOut() {
+    clearAuth();
+    window.location.reload();
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -77,6 +90,9 @@ export function Workspace() {
         railOpen={railOpen}
         onOpenTrips={() => setLibraryTab("trips")}
         onOpenPreferences={() => setLibraryTab("preferences")}
+        authUser={authUser}
+        onOpenAuth={() => setAuthOpen(true)}
+        onSignOut={signOut}
       />
       <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(360px,0.9fr)_1.3fr] xl:grid-cols-[minmax(380px,0.85fr)_1.35fr_minmax(300px,0.55fr)]">
         {/* Left: conversation */}
@@ -117,6 +133,7 @@ export function Workspace() {
       <Toaster />
       <ApprovalModal />
       <LibraryPanel tab={libraryTab} onClose={() => setLibraryTab(null)} onLoadSession={loadSession} />
+      <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} onSuccess={() => window.location.reload()} />
     </div>
   );
 }

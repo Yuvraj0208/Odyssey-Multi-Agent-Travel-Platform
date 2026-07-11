@@ -1,10 +1,11 @@
 "use client";
 
-import { Clock, Coins, Compass, Plus, SlidersHorizontal, Sparkles, Zap } from "lucide-react";
+import { Clock, Coins, Compass, LogIn, LogOut, Plus, SlidersHorizontal, Sparkles, Zap } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ThemeToggle } from "./ThemeToggle";
 import { NotificationBell } from "./NotificationBell";
-import { cn } from "@/lib/utils";
+import type { AuthUser } from "@/lib/auth";
+import { cn, initials } from "@/lib/utils";
 
 export function Header({
   onNewTrip,
@@ -12,12 +13,18 @@ export function Header({
   railOpen,
   onOpenTrips,
   onOpenPreferences,
+  authUser,
+  onOpenAuth,
+  onSignOut,
 }: {
   onNewTrip: () => void;
   onToggleRail: () => void;
   railOpen: boolean;
   onOpenTrips: () => void;
   onOpenPreferences: () => void;
+  authUser: AuthUser | null;
+  onOpenAuth: () => void;
+  onSignOut: () => void;
 }) {
   const telemetry = useStore((s) => s.telemetry);
   const itinerary = useStore((s) => s.itinerary);
@@ -87,6 +94,25 @@ export function Header({
         </button>
         <NotificationBell />
         <ThemeToggle />
+        {authUser ? (
+          <button
+            onClick={onSignOut}
+            title={`${authUser.email} - click to sign out`}
+            className="group flex items-center gap-1.5 rounded-lg border border-border pl-1 pr-2 py-1 text-xs text-muted transition hover:text-fg"
+          >
+            <span className="grid h-6 w-6 place-items-center rounded-md bg-accent text-[10px] font-bold text-accent-fg">
+              {initials(authUser.name || authUser.email)}
+            </span>
+            <LogOut className="h-3.5 w-3.5 opacity-60 transition group-hover:opacity-100" />
+          </button>
+        ) : (
+          <button
+            onClick={onOpenAuth}
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg transition hover:bg-elevated"
+          >
+            <LogIn className="h-3.5 w-3.5" /> Sign in
+          </button>
+        )}
       </div>
     </header>
   );
