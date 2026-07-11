@@ -1,0 +1,96 @@
+import type { AgentInfo, UIEvent } from "./types";
+
+// Same-origin in the browser (Next rewrites /api -> FastAPI). Server components
+// can override with NEXT_PUBLIC_API_BASE_URL.
+const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+
+function userId(): string {
+  if (typeof window === "undefined") return "demo-user";
+  let id = localStorage.getItem("odyssey-user");
+  if (!id) {
+    id = "u_" + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem("odyssey-user", id);
+  }
+  return id;
+}
+
+export async function createSession(): Promise<string> {
+  const r = await fetch(`${BASE}/api/sessions`, {
+    method: "POST",
+    headers: { "x-user-id": userId() },
+  });
+  if (!r.ok) throw new Error("failed to create session");
+  const j = await r.json();
+  return j.session_id as string;
+}
+
+export async function getAgents(): Promise<AgentInfo[]> {
+  const r = await fetch(`${BASE}/api/agents`);
+  if (!r.ok) return [];
+  const j = await r.json();
+  return j.agents as AgentInfo[];
+}
+
+export async function getSessionState(sessionId: string) {
+  const r = await fetch(`${BASE}/api/sessions/${sessionId}/state`, {
+    headers: { "x-user-id": userId() },
+  });
+  if (!r.ok) throw new Error("failed to load session");
+  return r.json();
+}
+
+/**
+ * Stream one turn. The endpoint is a POST returning an SSE body, so we parse the
+ * event stream from the fetch reader (EventSource can't POST).
+ */
+export async function streamChat(
+  sessionId: string,
+  text: string,
+  onEvent: (ev: UIEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const resp = await fetch(`${BASE}/api/chat/${sessionId}/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-user-id": userId() },
+    body: JSON.stringify({ text }),
+    signal,
+  });
+  if (!resp.ok || !resp.body) throw new Error(`stream failed: ${resp.status}`);
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // SSE frames are separated by a blank line.
+    let sep: number;
+    while ((sep = buffer.indexOf("\n\n")) !== -1) {
+      const frame = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      const ev = parseFrame(frame);
+      if (ev) onEvent(ev);
+    }
+  }
+}
+
+function parseFrame(frame: string): UIEvent | null {
+  let eventType = "message";
+  const dataLines: string[] = [];
+  for (const raw of frame.split("\n")) {
+    const line = raw.trimEnd();
+    if (line.startsWith(":")) continue; // comment/heartbeat
+    if (line.startsWith("event:")) eventType = line.slice(6).trim();
+    else if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart());
+  }
+  if (dataLines.length === 0) return null;
+  try {
+    const parsed = JSON.parse(dataLines.join("\n"));
+    return { type: (parsed.type || eventType) as UIEvent["type"], ts: parsed.ts, agent: parsed.agent, data: parsed.data || {} };
+  } catch {
+    return null;
+  }
+}
