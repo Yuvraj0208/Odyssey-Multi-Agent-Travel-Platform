@@ -1,4 +1,4 @@
-import type { AgentInfo, UIEvent } from "./types";
+import type { AgentInfo, Notification, UIEvent } from "./types";
 
 // Same-origin in the browser (Next rewrites /api -> FastAPI). Server components
 // can override with NEXT_PUBLIC_API_BASE_URL.
@@ -74,6 +74,63 @@ export async function streamChat(
       buffer = buffer.slice(sep + 2);
       const ev = parseFrame(frame);
       if (ev) onEvent(ev);
+    }
+  }
+}
+
+export async function getNotifications(): Promise<Notification[]> {
+  const r = await fetch(`${BASE}/api/notifications`, { headers: { "x-user-id": userId() } });
+  if (!r.ok) return [];
+  const j = await r.json();
+  return j.notifications as Notification[];
+}
+
+export async function recheckConditions(sessionId: string): Promise<{ issues: number }> {
+  const r = await fetch(`${BASE}/api/sessions/${sessionId}/recheck`, {
+    method: "POST",
+    headers: { "x-user-id": userId() },
+  });
+  if (!r.ok) return { issues: 0 };
+  return r.json();
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  await fetch(`${BASE}/api/notifications/${id}/read`, {
+    method: "POST",
+    headers: { "x-user-id": userId() },
+  }).catch(() => {});
+}
+
+/** Long-lived subscription to proactive notifications (SSE over fetch reader). */
+export async function streamNotifications(
+  onNote: (n: Notification) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const resp = await fetch(`${BASE}/api/notifications/stream`, {
+    headers: { "x-user-id": userId() },
+    signal,
+  });
+  if (!resp.ok || !resp.body) throw new Error("notifications stream failed");
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true }).replace(/\r/g, "");
+    let sep: number;
+    while ((sep = buffer.indexOf("\n\n")) !== -1) {
+      const frame = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      for (const raw of frame.split("\n")) {
+        if (raw.startsWith("data:")) {
+          try {
+            onNote(JSON.parse(raw.slice(5).trim()) as Notification);
+          } catch {
+            /* ignore malformed */
+          }
+        }
+      }
     }
   }
 }

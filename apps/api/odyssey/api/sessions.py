@@ -62,9 +62,12 @@ async def get_session_state(session_id: str, user: CurrentUser = Depends(current
 
 
 @router.post("/sessions/{session_id}/recheck")
-async def recheck_conditions(session_id: str, user: CurrentUser = Depends(current_user)) -> dict:
+async def recheck_conditions(
+    session_id: str, demo: bool = False, user: CurrentUser = Depends(current_user)
+) -> dict:
     """Re-evaluate live conditions (weather) against the saved itinerary and publish
-    proactive notifications for any newly adverse outdoor days."""
+    proactive notifications for any newly adverse outdoor days. Pass ?demo=true to
+    exercise the full event path when live weather is benign."""
     from odyssey.proactive.monitor import check_conditions
 
     runtime = await get_runtime()
@@ -73,5 +76,5 @@ async def recheck_conditions(session_id: str, user: CurrentUser = Depends(curren
     if not values.get("itinerary"):
         return {"issues": 0, "detail": "no itinerary yet"}
     values = {**values, "user_id": user.id, "session_id": session_id}
-    issues = await check_conditions(values, publish=True)
+    issues = await check_conditions(values, publish=True, force_demo=demo)
     return {"issues": len(issues), "days": [i["day"] for i in issues]}

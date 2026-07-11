@@ -8,6 +8,8 @@ import { ChatPanel } from "./ChatPanel";
 import { MapCanvas } from "./MapCanvas";
 import { ItineraryTimeline } from "./ItineraryTimeline";
 import { AgentRail } from "./AgentRail";
+import { Toaster } from "./Toaster";
+import { useNotifications } from "@/hooks/useNotifications";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +19,7 @@ export function Workspace() {
   const { setSession, setAgents, hydrate, reset } = useStore();
   const [ready, setReady] = useState(false);
   const [railOpen, setRailOpen] = useState(true);
+  useNotifications();
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +92,8 @@ export function Workspace() {
         {railOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
         {railOpen ? "Hide agents" : "Show agents"}
       </button>
+
+      <Toaster />
     </div>
   );
 }

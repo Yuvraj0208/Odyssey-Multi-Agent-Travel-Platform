@@ -54,10 +54,21 @@ Legend: [x] done and verified, [~] in progress, [ ] not started.
 
 ## Phase 2 - More agents + memory
 
-- [ ] Logistics Coordinator agent
-- [ ] Personalization/Memory agent
-- [ ] Long-term memory (store + vectors, per-user namespace)
-- [ ] Proactive re-planning (Redis pub/sub, weather trigger)
+- [x] Logistics Coordinator agent (real OSRM walking times, transit annotations,
+      per-day feasibility; haversine fallback)
+- [x] Personalization/Memory agent (recall at start of planning, personalizes plan)
+- [x] Long-term memory (LangGraph store, per-user namespace; keyword-ranked recall,
+      Qdrant/embeddings drop-in seam); write salient facts on done
+- [x] Deterministic forward pipeline (memory->research->plan->logistics) + LLM at
+      the completion/follow-up decision point
+- [x] Event bus (in-process local / Redis stack) + notification hub + weather
+      coordinator; conditions monitor publishes weather_changed -> notification
+- [x] Notifications: SSE stream + inbox bell + toasts + one-click re-plan; recheck
+      endpoint (?demo=true to exercise the path when weather is benign)
+- [x] 6 Phase-2 tests (21 total). Verified via script: memory persists + recalls
+      across sessions; logistics OSRM timing; pipeline order
+- [ ] Verify LIVE in browser (notifications toast + inbox, transit UI) - pending
+      backend restart
 
 ## Phase 3 - Bookings + HITL
 

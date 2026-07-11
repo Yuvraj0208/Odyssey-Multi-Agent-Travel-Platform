@@ -5,6 +5,7 @@ import type {
   ChatMessage,
   HandoffActivity,
   Itinerary,
+  Notification,
   Telemetry,
   ToolActivity,
   UIEvent,
@@ -26,6 +27,7 @@ interface OdysseyState {
   streaming: boolean;
   errorBanner: string | null;
   selectedItemId: string | null;
+  notifications: Notification[];
 
   // internal streaming cursor
   _streamId: string | null;
@@ -39,6 +41,8 @@ interface OdysseyState {
   endTurn: () => void;
   applyEvent: (ev: UIEvent) => void;
   selectItem: (id: string | null) => void;
+  addNotification: (n: Notification) => void;
+  markNotificationRead: (id: string) => void;
   reset: () => void;
 }
 
@@ -55,6 +59,7 @@ export const useStore = create<OdysseyState>((set, get) => ({
   streaming: false,
   errorBanner: null,
   selectedItemId: null,
+  notifications: [],
   _streamId: null,
   _streamAgent: null,
 
@@ -222,6 +227,12 @@ export const useStore = create<OdysseyState>((set, get) => ({
   },
 
   selectItem: (id) => set({ selectedItemId: id }),
+
+  addNotification: (n) =>
+    set((s) => (s.notifications.some((x) => x.id === n.id) ? s : { notifications: [n, ...s.notifications].slice(0, 30) })),
+
+  markNotificationRead: (id) =>
+    set((s) => ({ notifications: s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)) })),
 
   reset: () =>
     set({

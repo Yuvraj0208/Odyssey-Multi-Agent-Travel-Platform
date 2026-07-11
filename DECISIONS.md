@@ -76,6 +76,30 @@ One line of reasoning per choice. Newest at the bottom of each section.
   version="v2" (still supported) and used create_react_agent(state_schema=...) plus
   tag-based per-agent attribution for the stream mapper.
 
+## Phase 2 (memory, logistics, proactive)
+
+- Routing is a deterministic forward pipeline (memory -> research -> plan ->
+  logistics), with the LLM deciding only at the completion point (done vs. a
+  follow-up re-engage). Reason: pure LLM routing skipped memory and double-ran
+  logistics; a fixed pipeline guarantees order + termination while the agents' real
+  work (and the LLM's follow-up/clarify decisions) keep it genuinely agentic.
+- Long-term memory uses the LangGraph store with keyword-overlap ranking rather than
+  embeddings. Reason: fastembed/onnxruntime is heavy and risky on py3.14 + low RAM;
+  keyword recall is robust and the ranking function is the single swap point for
+  Qdrant/vectors later.
+- Memory read is an agent node (visible in mission-control); memory write is a
+  helper the supervisor calls on done. Reason: reads should personalize downstream
+  agents (so they run first, as a node), writes are an end-of-turn side effect.
+- Logistics is advisory (annotates transit + flags over-packed days) rather than
+  auto-rewriting the plan. Reason: keeps turns bounded and avoids planner<->logistics
+  loops; the delegate-back handoff remains available for a future iteration.
+- Travel times via OSRM public server (one call per day using waypoint legs),
+  haversine estimate fallback. Reason: real durations, keyless, resilient.
+- Proactive re-planning: event bus (in-process local / Redis stack) + a background
+  weather coordinator that turns weather_changed events into user notifications
+  streamed over SSE. A ?demo=true flag on recheck exercises the full path when live
+  weather is benign. Reason: genuinely event-driven, not a poll baked into the turn.
+
 ## Frontend
 
 - Next.js 15 App Router + React 19 + TS, Tailwind + shadcn/ui, Framer Motion,

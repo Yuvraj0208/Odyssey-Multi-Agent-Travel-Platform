@@ -41,4 +41,4 @@ async def notifications_stream(user: CurrentUser = Depends(current_user)):
         async for payload in bus.subscribe(ch_notify(user.id)):
             yield {"event": "notification", "data": orjson.dumps(payload).decode()}
 
-    return EventSourceResponse(gen(), ping=15000)
+    return EventSourceResponse(gen(), ping=15)  # keepalive comment every 15s

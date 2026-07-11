@@ -13,7 +13,7 @@ AGENT_REGISTRY, so new agents are considered automatically.
 
 from __future__ import annotations
 
-from langchain_core.messages import AIMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from odyssey.agents.base import (
@@ -145,37 +145,41 @@ async def supervisor_node(state: dict) -> dict:
     brief = brief or {}
     heuristic = _heuristic_next(brief, ctx, itinerary)
 
-    # 2. LLM routing decision, constrained by guardrails.
-    route_prompt = SUPERVISOR_ROUTE.format(
-        agents=registry_descriptions(),
-        brief_status="yes: " + brief["destination"] if brief.get("destination") else "no destination yet",
-        research_status="yes" if ctx.get("research_done") else "no",
-        itinerary_status="yes" if itinerary else "no",
-        error_status=str(len(state.get("errors", []))) + " logged",
-        hops=hops,
-    )
-    decision = await safe_structured(
-        llm, RouteDecision, [SystemMessage(content=route_prompt)], agent=SUPERVISOR
-    )
-
-    llm_choice = decision.next_agent if decision else None
-    llm_reason = decision.reason if decision else None
-
-    # Route counts are per-turn: reset on the first supervisor pass (hops == 0).
+    # 2. Routing. The forward pipeline (memory -> research -> plan -> logistics) is
+    # deterministic so steps never skip or duplicate; we only consult the LLM router
+    # at the completion point, where a fresh user request may re-engage a specialist.
+    # This also avoids an LLM call on every hop.
     counts = {} if hops == 0 else dict(ctx.get("_route_counts") or {})
 
-    # The forward pipeline (memory -> research -> plan -> logistics) is deterministic
-    # so steps never get skipped or duplicated. The LLM decides only at the completion
-    # point, where a fresh user request may legitimately re-engage a specialist.
     if heuristic != DONE:
         next_agent = heuristic
-        reason = llm_reason if llm_choice == heuristic else _DEFAULT_REASONS.get(heuristic, "continuing")
-    elif llm_choice in AGENT_REGISTRY and counts.get(llm_choice, 0) < 1:
-        next_agent = llm_choice
-        reason = llm_reason or f"following up with {llm_choice}"
+        reason = _DEFAULT_REASONS.get(heuristic, "continuing")
     else:
-        next_agent = DONE
-        reason = llm_reason or "the plan is complete"
+        route_prompt = SUPERVISOR_ROUTE.format(
+            agents=registry_descriptions(),
+            brief_status=("yes: " + brief["destination"]) if brief.get("destination") else "no destination yet",
+            research_status="yes" if ctx.get("research_done") else "no",
+            itinerary_status="yes" if itinerary else "no",
+            error_status=str(len(state.get("errors", []))) + " logged",
+            hops=hops,
+        )
+        # Include the latest user message so the router can detect a follow-up
+        # change request (e.g. "swap the rainy-day outdoor plans for indoor ones").
+        last_user = next(
+            (m for m in reversed(messages) if isinstance(m, HumanMessage)), None
+        )
+        route_msgs: list = [SystemMessage(content=route_prompt)]
+        if last_user is not None:
+            route_msgs.append(HumanMessage(content=f"Latest traveler message: {last_user.content}"))
+        decision = await safe_structured(llm, RouteDecision, route_msgs, agent=SUPERVISOR)
+        llm_choice = decision.next_agent if decision else None
+        llm_reason = decision.reason if decision else None
+        if llm_choice in AGENT_REGISTRY and counts.get(llm_choice, 0) < 1:
+            next_agent = llm_choice
+            reason = llm_reason or f"following up with {llm_choice}"
+        else:
+            next_agent = DONE
+            reason = llm_reason or "the plan is complete"
 
     # Hard safety rails (always kept).
     if next_agent != DONE and not brief.get("destination"):

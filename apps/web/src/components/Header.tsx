@@ -3,6 +3,7 @@
 import { Compass, Coins, Plus, Sparkles, Zap } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ThemeToggle } from "./ThemeToggle";
+import { NotificationBell } from "./NotificationBell";
 import { cn } from "@/lib/utils";
 
 export function Header({
@@ -66,6 +67,7 @@ export function Header({
         >
           <Sparkles className="h-3.5 w-3.5" /> Agents
         </button>
+        <NotificationBell />
         <ThemeToggle />
       </div>
     </header>

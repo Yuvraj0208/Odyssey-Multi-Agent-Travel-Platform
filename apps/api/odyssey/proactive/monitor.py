@@ -32,8 +32,13 @@ def _adverse(day_weather: dict) -> bool:
     return (day_weather.get("precip_prob_pct") or 0) >= 50
 
 
-async def check_conditions(state: dict, *, publish: bool = True) -> list[dict]:
-    """Return a list of detected issues; optionally publish weather_changed events."""
+async def check_conditions(state: dict, *, publish: bool = True, force_demo: bool = False) -> list[dict]:
+    """Return a list of detected issues; optionally publish weather_changed events.
+
+    force_demo synthesizes one issue from the first outdoor day when live weather is
+    benign, so the full event-driven path (bus -> coordinator -> notification -> UI)
+    can be demonstrated on demand. It flows through the same real machinery.
+    """
     itinerary = state.get("itinerary")
     if not itinerary or not itinerary.get("days"):
         return []
@@ -47,8 +52,6 @@ async def check_conditions(state: dict, *, publish: bool = True) -> list[dict]:
     # Live re-fetch (default forecast window).
     content, art = await _fetch_weather(center["lat"], center["lng"])
     forecast = art.get("days", []) if isinstance(art, dict) else []
-    if not forecast:
-        return []
 
     issues: list[dict] = []
     bus = get_event_bus()
@@ -59,20 +62,40 @@ async def check_conditions(state: dict, *, publish: bool = True) -> list[dict]:
         dw = forecast[i] if i < len(forecast) else None
         if not dw or not _adverse(dw):
             continue
-        issue = {
-            "session_id": session_id,
-            "user_id": user_id,
-            "day": day.get("day", i + 1),
-            "date": dw.get("date"),
-            "condition": dw.get("condition"),
-            "precip_prob_pct": dw.get("precip_prob_pct"),
-            "outdoor_items": outdoor,
-        }
-        issues.append(issue)
-        if publish and user_id:
+        issues.append(
+            {
+                "session_id": session_id,
+                "user_id": user_id,
+                "day": day.get("day", i + 1),
+                "date": dw.get("date"),
+                "condition": dw.get("condition"),
+                "precip_prob_pct": dw.get("precip_prob_pct"),
+                "outdoor_items": outdoor,
+            }
+        )
+
+    if not issues and force_demo:
+        for day in itinerary["days"]:
+            outdoor = [it["title"] for it in day.get("items", []) if _is_outdoor(it)]
+            if outdoor:
+                issues.append(
+                    {
+                        "session_id": session_id,
+                        "user_id": user_id,
+                        "day": day.get("day"),
+                        "date": forecast[0].get("date") if forecast else None,
+                        "condition": "rain",
+                        "precip_prob_pct": 80,
+                        "outdoor_items": outdoor,
+                    }
+                )
+                break
+
+    if publish and user_id:
+        for issue in issues:
             await bus.publish(CH_WEATHER_CHANGED, issue)
     if issues:
-        log.info("monitor.issues", session_id=session_id, count=len(issues))
+        log.info("monitor.issues", session_id=session_id, count=len(issues), demo=force_demo)
     return issues
 
 

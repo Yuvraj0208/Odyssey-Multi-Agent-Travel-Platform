@@ -24,12 +24,18 @@ Current situation:
 - Recent errors: {error_status}
 - Specialist hops so far this turn: {hops}
 
+The traveler's latest message is provided. An itinerary already exists, so decide whether
+this message needs more work or is satisfied.
+
 Routing rules:
-- If there is no destination in the brief, choose "done" (we will ask the user to clarify).
-- If there is a destination but no destination research yet, route to destination_intelligence.
-- If research exists but no itinerary yet, route to trip_planner.
-- If an itinerary exists and the user's request is satisfied, choose "done".
-- Never route to the same agent more than twice in one turn; if stuck, choose "done".
+- If the message asks to CHANGE, adjust, swap, add, remove, re-plan, or fix the itinerary
+  (including reacting to a weather alert), route to trip_planner.
+- If the message asks for different or updated destination facts (weather, attractions),
+  route to destination_intelligence.
+- If the message only asks to re-check timing or feasibility, route to logistics.
+- If the message is a general question already answered, or is just thanks/acknowledgement,
+  choose "done".
+- Never route to the same agent more than twice in one turn; if unsure, choose "done".
 
 Respond with the next agent name (exactly as listed) or "done", plus a one-line reason
 that will be shown in the live mission-control panel."""

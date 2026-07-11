@@ -53,6 +53,9 @@ export interface ItineraryItem {
   booking_ref?: string | null;
   weather_note?: string | null;
   tags?: string[];
+  transit_to_next_min?: number | null;
+  transit_to_next_km?: number | null;
+  transit_mode?: string | null;
 }
 
 export interface ItineraryDay {
@@ -60,6 +63,8 @@ export interface ItineraryDay {
   date?: string | null;
   summary?: string | null;
   items: ItineraryItem[];
+  travel_min?: number | null;
+  feasible?: boolean | null;
 }
 
 export interface Itinerary {
@@ -97,6 +102,18 @@ export interface HandoffActivity {
   to: string;
   reason: string;
   ts: number;
+}
+
+export interface Notification {
+  id: string;
+  kind: "weather" | "price" | "availability" | "info";
+  severity: "info" | "warning";
+  title: string;
+  body: string;
+  session_id?: string | null;
+  suggested_prompt?: string | null;
+  created_at: number;
+  read?: boolean;
 }
 
 export interface Telemetry {
