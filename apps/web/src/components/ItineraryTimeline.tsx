@@ -22,6 +22,7 @@ import { useStore } from "@/lib/store";
 import { recheckConditions } from "@/lib/api";
 import type { ItineraryDay as ItineraryDayT, ItineraryItem } from "@/lib/types";
 import { DAY_COLORS } from "./MapCanvas";
+import { BookingsPanel } from "./BookingsPanel";
 import { cn, currency } from "@/lib/utils";
 
 const TYPE_ICON: Record<string, typeof MapPin> = {
@@ -90,6 +91,7 @@ export function ItineraryTimeline() {
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+        <BookingsPanel />
         {itinerary.days.map((day) => {
           const color = DAY_COLORS[(day.day - 1) % DAY_COLORS.length];
           return (

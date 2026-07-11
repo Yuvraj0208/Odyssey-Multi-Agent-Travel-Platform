@@ -11,7 +11,9 @@ export type UIEventType =
   | "tool_end"
   | "handoff"
   | "plan_updated"
+  | "options"
   | "approval_required"
+  | "booking_updated"
   | "telemetry"
   | "error"
   | "done";
@@ -103,6 +105,41 @@ export interface HandoffActivity {
   reason: string;
   ts: number;
 }
+
+export interface Offer {
+  id: string;
+  type: string;
+  provider: string;
+  title: string;
+  price: number;
+  currency?: string;
+  details?: Record<string, any>;
+  geo?: Geo | null;
+  cancellation?: string;
+}
+
+export interface Booking {
+  id: string;
+  type: string;
+  action?: string;
+  provider: string;
+  title: string;
+  price: number;
+  currency?: string;
+  status: string;
+  booking_ref?: string | null;
+  cancellation?: string;
+  details?: Record<string, any>;
+}
+
+export interface ApprovalPayload {
+  kind: string;
+  bookings: Booking[];
+  total: number;
+  currency: string;
+}
+
+export type OptionsMap = { flights?: Offer[]; hotels?: Offer[]; activities?: Offer[] };
 
 export interface Notification {
   id: string;

@@ -57,17 +57,37 @@ export async function streamChat(
   });
   if (!resp.ok || !resp.body) throw new Error(`stream failed: ${resp.status}`);
 
-  const reader = resp.body.getReader();
+  await consumeUIEvents(resp, onEvent);
+}
+
+/** Resume a graph paused at the approval gate with the user's decision. */
+export async function resumeChat(
+  sessionId: string,
+  decision: { approved: boolean; note?: string; booking_id?: string },
+  onEvent: (ev: UIEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const resp = await fetch(`${BASE}/api/chat/${sessionId}/resume`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-user-id": userId() },
+    body: JSON.stringify(decision),
+    signal,
+  });
+  if (!resp.ok || !resp.body) throw new Error(`resume failed: ${resp.status}`);
+  await consumeUIEvents(resp, onEvent);
+}
+
+/** Shared SSE reader for the UIEvent streams (chat + resume). */
+async function consumeUIEvents(resp: Response, onEvent: (ev: UIEvent) => void): Promise<void> {
+  const reader = resp.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
     // Normalize CRLF -> LF: sse-starlette emits \r\n line endings, so frames are
     // separated by \r\n\r\n. Stripping raw \r lets us split on the blank line.
     buffer += decoder.decode(value, { stream: true }).replace(/\r/g, "");
-
     let sep: number;
     while ((sep = buffer.indexOf("\n\n")) !== -1) {
       const frame = buffer.slice(0, sep);

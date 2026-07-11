@@ -2,10 +2,13 @@ import { create } from "zustand";
 import type {
   AgentInfo,
   AgentStatus,
+  ApprovalPayload,
+  Booking,
   ChatMessage,
   HandoffActivity,
   Itinerary,
   Notification,
+  OptionsMap,
   Telemetry,
   ToolActivity,
   UIEvent,
@@ -28,6 +31,9 @@ interface OdysseyState {
   errorBanner: string | null;
   selectedItemId: string | null;
   notifications: Notification[];
+  options: OptionsMap | null;
+  approval: ApprovalPayload | null;
+  confirmedBookings: Booking[];
 
   // internal streaming cursor
   _streamId: string | null;
@@ -43,6 +49,7 @@ interface OdysseyState {
   selectItem: (id: string | null) => void;
   addNotification: (n: Notification) => void;
   markNotificationRead: (id: string) => void;
+  clearApproval: () => void;
   reset: () => void;
 }
 
@@ -60,6 +67,9 @@ export const useStore = create<OdysseyState>((set, get) => ({
   errorBanner: null,
   selectedItemId: null,
   notifications: [],
+  options: null,
+  approval: null,
+  confirmedBookings: [],
   _streamId: null,
   _streamAgent: null,
 
@@ -81,6 +91,17 @@ export const useStore = create<OdysseyState>((set, get) => ({
         })) ?? [],
       itinerary: state.itinerary ?? null,
       telemetry: state.telemetry ?? s.telemetry,
+      confirmedBookings: state.confirmed_bookings ?? [],
+      // If the graph was left paused at the approval gate, re-surface the modal.
+      approval:
+        state.interrupted && (state.pending_bookings?.length ?? 0) > 0
+          ? {
+              kind: "booking_approval",
+              bookings: state.pending_bookings,
+              total: state.pending_bookings.reduce((a: number, b: any) => a + (b.price || 0), 0),
+              currency: state.pending_bookings[0]?.currency ?? "USD",
+            }
+          : null,
     })),
 
   addUserMessage: (text) =>
@@ -210,6 +231,18 @@ export const useStore = create<OdysseyState>((set, get) => ({
         set({ itinerary: ev.data.itinerary as Itinerary });
         break;
       }
+      case "options": {
+        set({ options: { ...(s.options || {}), ...(ev.data.options as OptionsMap) } });
+        break;
+      }
+      case "approval_required": {
+        set({ approval: ev.data as ApprovalPayload });
+        break;
+      }
+      case "booking_updated": {
+        set({ confirmedBookings: (ev.data.confirmed_bookings as Booking[]) || [] });
+        break;
+      }
       case "telemetry": {
         set({ telemetry: ev.data as Telemetry });
         break;
@@ -227,6 +260,7 @@ export const useStore = create<OdysseyState>((set, get) => ({
   },
 
   selectItem: (id) => set({ selectedItemId: id }),
+  clearApproval: () => set({ approval: null }),
 
   addNotification: (n) =>
     set((s) => (s.notifications.some((x) => x.id === n.id) ? s : { notifications: [n, ...s.notifications].slice(0, 30) })),
@@ -244,6 +278,9 @@ export const useStore = create<OdysseyState>((set, get) => ({
       streaming: false,
       errorBanner: null,
       selectedItemId: null,
+      options: null,
+      approval: null,
+      confirmedBookings: [],
       _streamId: null,
       _streamAgent: null,
       activeAgent: null,

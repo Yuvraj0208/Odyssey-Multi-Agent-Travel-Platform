@@ -56,8 +56,9 @@ async def get_session_state(session_id: str, user: CurrentUser = Depends(current
         "tool_events": values.get("tool_events", []),
         "errors": values.get("errors", []),
         "telemetry": get_session_telemetry(session_id).snapshot(),
-        "interrupted": bool(snapshot and snapshot.next),
+        "interrupted": bool(snapshot and getattr(snapshot, "interrupts", None)),
         "pending_bookings": values.get("pending_bookings", []),
+        "confirmed_bookings": values.get("confirmed_bookings", []),
     }
 
 

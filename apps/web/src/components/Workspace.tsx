@@ -9,6 +9,7 @@ import { MapCanvas } from "./MapCanvas";
 import { ItineraryTimeline } from "./ItineraryTimeline";
 import { AgentRail } from "./AgentRail";
 import { Toaster } from "./Toaster";
+import { ApprovalModal } from "./ApprovalModal";
 import { useNotifications } from "@/hooks/useNotifications";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -94,6 +95,7 @@ export function Workspace() {
       </button>
 
       <Toaster />
+      <ApprovalModal />
     </div>
   );
 }
