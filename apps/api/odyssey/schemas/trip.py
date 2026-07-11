@@ -6,11 +6,20 @@ with the SQLAlchemy persistence models in odyssey/db.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+import datetime as _dt
+import uuid
 from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, Field
+
+
+def _item_id() -> str:
+    return uuid.uuid4().hex[:10]
+
+
+def _now() -> _dt.datetime:
+    return _dt.datetime.now(_dt.timezone.utc)
 
 
 class Geo(BaseModel):
@@ -37,8 +46,8 @@ class TripBrief(BaseModel):
     destination: str | None = None
     origin: str | None = None
     geo: Geo | None = None
-    start_date: date | None = None
-    end_date: date | None = None
+    start_date: _dt.date | None = None
+    end_date: _dt.date | None = None
     duration_days: int | None = None
     party: Party = Field(default_factory=Party)
     budget: Budget = Field(default_factory=Budget)
@@ -61,7 +70,7 @@ class ItemType(StrEnum):
 
 
 class ItineraryItem(BaseModel):
-    id: str
+    id: str = Field(default_factory=_item_id)
     type: ItemType = ItemType.attraction
     title: str
     description: str | None = None
@@ -79,7 +88,7 @@ class ItineraryItem(BaseModel):
 
 class ItineraryDay(BaseModel):
     day: int
-    date: date | None = None
+    date: _dt.date | None = None
     summary: str | None = None
     items: list[ItineraryItem] = Field(default_factory=list)
 
@@ -94,7 +103,7 @@ class Itinerary(BaseModel):
     days: list[ItineraryDay] = Field(default_factory=list)
     currency: str = "USD"
     summary: str | None = None
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: _dt.datetime = Field(default_factory=_now)
 
     @property
     def estimated_total(self) -> float:

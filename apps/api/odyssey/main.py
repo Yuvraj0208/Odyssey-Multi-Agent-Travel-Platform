@@ -38,6 +38,9 @@ async def lifespan(app: FastAPI):
         vector_backend=s.vector_backend,
     )
     yield
+    from odyssey.graph.runtime import shutdown_runtime
+
+    await shutdown_runtime()
     log.info("shutdown")
 
 
@@ -90,6 +93,10 @@ def create_app() -> FastAPI:
 
     # Routers
     app.include_router(health.router)
+
+    from odyssey.api import meta as meta_router
+
+    app.include_router(meta_router.router, prefix="/api")
 
     # Feature routers are registered here as phases land. Import guarded so the
     # app still boots if an optional dependency for a later phase is absent.
