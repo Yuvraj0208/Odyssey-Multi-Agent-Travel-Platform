@@ -129,6 +129,13 @@ def create_app() -> FastAPI:
     except Exception as e:  # pragma: no cover
         log.warning("router.notifications.skipped", error=str(e))
 
+    try:
+        from odyssey.api import memory as memory_router
+
+        app.include_router(memory_router.router, prefix="/api")
+    except Exception as e:  # pragma: no cover
+        log.warning("router.memory.skipped", error=str(e))
+
     return app
 
 

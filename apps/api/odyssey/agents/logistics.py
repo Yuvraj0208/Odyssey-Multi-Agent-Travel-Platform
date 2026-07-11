@@ -24,12 +24,44 @@ _PACKED_TRAVEL_MIN = 150.0
 _LONG_LEG_MIN = 40.0
 
 
-async def _route_day(coords: list[list[float]]) -> dict:
+async def _route_day(coords: list[list[float]], config: dict | None = None) -> dict:
     msg = await plan_day_route.ainvoke(
         {"type": "tool_call", "id": "route", "name": "plan_day_route", "args": {"coords": coords, "mode": "walking"}},
-        config=agent_config(LOGISTICS),
+        config=config,
     )
     return getattr(msg, "artifact", {}) or {}
+
+
+async def revalidate_itinerary(itinerary: dict, config: dict | None = None) -> list[dict]:
+    """Recompute intra-day travel times + feasibility, annotating the itinerary in
+    place. Shared by the logistics agent and the drag-to-reorder endpoint so a
+    reorder re-validates timing exactly as the agent would. Returns per-day reports."""
+    reports: list[dict] = []
+    for day in itinerary.get("days", []):
+        # clear stale annotations so a reorder never keeps an old hop
+        for it in day.get("items", []):
+            it["transit_to_next_min"] = None
+            it["transit_to_next_km"] = None
+            it["transit_mode"] = None
+        geo_items = [it for it in day.get("items", []) if it.get("geo")]
+        coords = [[it["geo"]["lng"], it["geo"]["lat"]] for it in geo_items]
+        if len(coords) < 2:
+            day["travel_min"] = 0.0
+            day["feasible"] = True
+            continue
+        art = await _route_day(coords, config)
+        legs = art.get("legs", [])
+        for i, it in enumerate(geo_items[:-1]):
+            if i < len(legs):
+                it["transit_to_next_min"] = legs[i]["duration_min"]
+                it["transit_to_next_km"] = legs[i]["distance_km"]
+                it["transit_mode"] = "walking"
+        total = art.get("total_min", 0.0)
+        longest = max((leg["duration_min"] for leg in legs), default=0.0)
+        day["travel_min"] = total
+        day["feasible"] = total <= _PACKED_TRAVEL_MIN and longest <= _LONG_LEG_MIN
+        reports.append({"day": day["day"], "travel_min": total, "feasible": day["feasible"], "longest_leg": longest})
+    return reports
 
 
 async def logistics_node(state: dict) -> dict:
@@ -41,35 +73,13 @@ async def logistics_node(state: dict) -> dict:
             "active_agent": LOGISTICS,
         }
 
-    days = itinerary["days"]
     events = []
-    day_reports = []
     try:
-        for day in days:
-            geo_items = [it for it in day.get("items", []) if it.get("geo")]
-            coords = [[it["geo"]["lng"], it["geo"]["lat"]] for it in geo_items]
-            if len(coords) < 2:
-                day["travel_min"] = 0.0
-                day["feasible"] = True
-                continue
-            art = await _route_day(coords)
-            legs = art.get("legs", [])
-            # annotate each stop with the hop to the next
-            for i, it in enumerate(geo_items[:-1]):
-                if i < len(legs):
-                    it["transit_to_next_min"] = legs[i]["duration_min"]
-                    it["transit_to_next_km"] = legs[i]["distance_km"]
-                    it["transit_mode"] = "walking"
-            total = art.get("total_min", 0.0)
-            day["travel_min"] = total
-            longest = max((leg["duration_min"] for leg in legs), default=0.0)
-            day["feasible"] = total <= _PACKED_TRAVEL_MIN and longest <= _LONG_LEG_MIN
-            events.append(
-                tool_event(LOGISTICS, "plan_day_route", f"Day {day['day']}: {total:.0f} min walking", True, 0)
-            )
-            day_reports.append(
-                {"day": day["day"], "travel_min": total, "feasible": day["feasible"], "longest_leg": longest}
-            )
+        day_reports = await revalidate_itinerary(itinerary, agent_config(LOGISTICS))
+        events = [
+            tool_event(LOGISTICS, "plan_day_route", f"Day {r['day']}: {r['travel_min']:.0f} min walking", True, 0)
+            for r in day_reports
+        ]
     except Exception as e:  # graceful degradation
         log.warning("logistics.failed", error=str(e))
         return {

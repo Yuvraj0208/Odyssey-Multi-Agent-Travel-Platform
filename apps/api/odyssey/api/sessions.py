@@ -12,6 +12,7 @@ import uuid
 
 from fastapi import APIRouter, Depends
 from langchain_core.messages import AIMessage, HumanMessage
+from pydantic import BaseModel
 
 from odyssey.api.deps import CurrentUser, current_user
 from odyssey.core.telemetry import get_session_telemetry
@@ -21,9 +22,39 @@ from odyssey.schemas.chat import SessionOut
 router = APIRouter(tags=["sessions"])
 
 
+class ReorderIn(BaseModel):
+    itinerary: dict
+
+
 @router.post("/sessions", response_model=SessionOut)
 async def create_session(user: CurrentUser = Depends(current_user)) -> SessionOut:
     return SessionOut(session_id=uuid.uuid4().hex, user_id=user.id, status="active")
+
+
+@router.get("/sessions")
+async def list_sessions(user: CurrentUser = Depends(current_user)) -> dict:
+    from odyssey.memory.store_repo import list_sessions as _list
+
+    runtime = await get_runtime()
+    return {"sessions": await _list(runtime.store, user.id)}
+
+
+@router.post("/sessions/{session_id}/reorder")
+async def reorder_itinerary(
+    session_id: str, body: ReorderIn, user: CurrentUser = Depends(current_user)
+) -> dict:
+    """Persist a drag-reordered itinerary and re-validate day-of timing (logistics),
+    deterministically (no LLM) so the timeline updates instantly."""
+    from odyssey.agents.logistics import revalidate_itinerary
+
+    runtime = await get_runtime()
+    itinerary = body.itinerary
+    await revalidate_itinerary(itinerary)  # recompute transit + feasibility
+    await runtime.graph.aupdate_state(
+        {"configurable": {"thread_id": session_id}},
+        {"itinerary": itinerary, "context": {"logistics_done": True}},
+    )
+    return {"itinerary": itinerary}
 
 
 @router.get("/sessions/{session_id}/state")

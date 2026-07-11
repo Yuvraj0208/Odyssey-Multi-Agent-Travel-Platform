@@ -12,6 +12,7 @@ mission-control panel:
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from time import perf_counter
 from typing import Any
 
 from odyssey.agents.base import BOOKING_CONFIRM, SUPERVISOR, summarize
@@ -134,6 +135,7 @@ async def _run_stream(
     }
     tel = get_session_telemetry(session_id)
     current_agent = SUPERVISOR
+    turn_start = perf_counter()
     # booking_confirm is an internal gate (not a registered agent) but we still emit
     # its messages/booking updates, attributed to the booking agent.
     processable = known_agents() | {BOOKING_CONFIRM}
@@ -199,12 +201,26 @@ async def _run_stream(
     # If the graph paused at the human-in-the-loop gate, surface the approval request
     # instead of ending the turn.
     interrupts = []
+    snapshot = None
     try:
         snapshot = await runtime.graph.aget_state(config)
         interrupts = list(getattr(snapshot, "interrupts", None) or [])
     except Exception:  # pragma: no cover
         pass
 
+    # Record session metadata for the trips/history list (best-effort).
+    try:
+        if snapshot is not None and runtime.store is not None:
+            from odyssey.memory.store_repo import record_session
+
+            itin = (snapshot.values or {}).get("itinerary") or {}
+            await record_session(
+                runtime.store, user_id, session_id, destination=itin.get("destination")
+            )
+    except Exception:  # pragma: no cover
+        pass
+
+    tel.last_latency_ms = (perf_counter() - turn_start) * 1000
     yield ev_telemetry(tel.snapshot())
     if interrupts:
         yield ev_approval_required(interrupts[0].value)

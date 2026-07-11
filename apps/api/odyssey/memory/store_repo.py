@@ -30,6 +30,43 @@ def _ns(user_id: str) -> tuple[str, str]:
     return ("memories", user_id)
 
 
+def _sess_ns(user_id: str) -> tuple[str, str]:
+    return ("sessions", user_id)
+
+
+async def delete_memory(store, user_id: str, key: str) -> None:
+    await store.adelete(_ns(user_id), key)
+
+
+async def record_session(
+    store, user_id: str, session_id: str, *, title: str | None = None, destination: str | None = None
+) -> None:
+    """Upsert lightweight session metadata for the trips/history list."""
+    try:
+        existing = await store.aget(_sess_ns(user_id), session_id)
+    except Exception:
+        existing = None
+    val = dict(existing.value) if existing else {}
+    now = time.time()
+    val.setdefault("created_at", now)
+    val.update({"session_id": session_id, "updated_at": now})
+    if destination:
+        val["destination"] = destination
+    if title:
+        val["title"] = title
+    if not val.get("title"):
+        val["title"] = destination or "New trip"
+    await store.aput(_sess_ns(user_id), session_id, val)
+
+
+async def list_sessions(store, user_id: str) -> list[dict]:
+    try:
+        items = await store.asearch(_sess_ns(user_id), limit=100)
+    except Exception:
+        return []
+    return sorted((it.value for it in items), key=lambda s: s.get("updated_at", 0), reverse=True)
+
+
 class MemoryFact(BaseModel):
     text: str = Field(description="a concise, durable fact about the traveler")
     kind: str = Field(default="preference", description="|".join(_KINDS))
