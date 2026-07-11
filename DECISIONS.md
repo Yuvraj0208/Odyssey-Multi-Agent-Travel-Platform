@@ -132,6 +132,23 @@ One line of reasoning per choice. Newest at the bottom of each section.
 - Trips history + preferences are a single slide-over with tabs, backed by a store
   session index and the memory CRUD API. Reason: one surface, minimal chrome.
 
+## Phase 5 (hardening)
+
+- Auth: PyJWT (HS256) + bcrypt directly, users stored in the LangGraph store (not a
+  new SQL schema). Reason: dependency-light, works in both modes, consistent with the
+  store-backed sessions/memory. current_user accepts a Bearer JWT with an x-user-id
+  dev fallback; AUTH_REQUIRED flips enforcement so the demo works signed-out.
+- Rate limiting: an in-process token bucket as middleware rather than slowapi.
+  Reason: slowapi's decorators need a Request param on every endpoint; a middleware
+  bucket is uniform and swaps to a Redis bucket in stack mode.
+- Guardrails are deterministic (regex sanitization + PII redaction as a structlog
+  processor), never LLM calls, so they run on every request cheaply.
+- Evals split into deterministic checks (budget, timing feasibility, no double-booking,
+  grounded-in-real-POIs) + an optional LLM-as-judge. Reason: the objective half is
+  reproducible and CI-safe; the subjective half degrades to None without an LLM.
+- CI on Python 3.12 (not the build machine's 3.14) for wheel stability; pyright is
+  advisory (non-gating) to avoid brittle type failures blocking the pipeline.
+
 ## Frontend
 
 - Next.js 15 App Router + React 19 + TS, Tailwind + shadcn/ui, Framer Motion,
