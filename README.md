@@ -1,163 +1,300 @@
-# Odyssey
+<div align="center">
 
-An agentic AI travel platform. A team of seven specialized LangGraph agents plans
-trips collaboratively, grounded in real open tourism data, with the multi-agent
-collaboration visible live on screen. Human-in-the-loop bookings, durable resumable
-conversations, long-term memory, and proactive re-planning. Fully open source, runs
-locally.
+# 🧭 Odyssey
 
-> Built in six phases (0-5). See PROGRESS.md for the live checklist, DECISIONS.md
-> for every non-trivial choice, and AGENTS.md for the agent contracts.
+### A team of AI agents that plans your trip — live, grounded, and under your control
 
-## What it does
+*Describe a trip in plain English. Watch seven specialized agents research it, plan it, price it, and lay it out on a live map — with every handoff, tool call, and decision visible in real time.*
 
-- Describe a trip in natural language and watch a **supervisor route work to
-  specialists** (memory, destination intelligence, trip planner, logistics, booking,
-  support) that call real tools and hand context to each other - visible live in a
-  **mission-control node-graph**.
-- See the itinerary build on an **interactive MapLibre map** and a **drag-to-reorder
-  day-by-day timeline**, grounded in live open data (weather, points of interest,
-  real walking times).
-- **Approve any booking explicitly** before it is confirmed - a LangGraph
-  `interrupt()` gate surfaces a clean approval card; nothing is charged until you say so.
-- **Resume** a conversation exactly where it left off (checkpointing), with your
-  **preferences remembered across sessions** (long-term memory).
-- Get **proactive notifications** when conditions change (e.g. rain on an outdoor
-  day) with one-click re-planning - event-driven, not request-response.
-- **Sign in** to sync trips and preferences; every user route is rate-limited and
-  guarded (input sanitization + PII redaction).
-- **Full observability**: every agent step, tool call, token, cost, and latency.
+<br/>
 
-## Architecture
+[![CI](https://github.com/Yuvraj0208/Odyssey-Multi-Agent-Travel-Platform/actions/workflows/ci.yml/badge.svg)](https://github.com/Yuvraj0208/Odyssey-Multi-Agent-Travel-Platform/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-1.x-1C3C3C?logo=langchain&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![Tests](https://img.shields.io/badge/tests-37%20passing-brightgreen?logo=pytest&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
-```
-                      Next.js 15 web app  (chat . map . drag timeline . mission-control . approval modal . auth)
-                                   |  SSE UIEvent stream (agent_enter/token/tool_*/handoff/plan_updated/approval_required/...)
-                                   v
-   FastAPI (async)  ── auth (JWT) . rate limit . guardrails . /chat/stream . /resume . /reorder . /sessions . /memory . /metrics
-                                   |
-                                   v
-                LangGraph StateGraph  (TravelState . Postgres|SQLite checkpointer . long-term store)
-                                   |
-        START -> Supervisor  (deterministic pipeline + LLM at the decision point)
-                   |    |         |          |            |             |
-               Memory  Destination Trip     Logistics   Booking ----> booking_confirm
-              (recall) Intelligence Planner (OSRM)      (search)      (interrupt -> approve/decline)
-                   |    |         |          |            |
-                   v    v         v          v            v
-     tools: Open-Meteo (weather+geocode) . Overpass (POIs) . OSRM (routing) . Nominatim
-            mock Flight/Hotel/Activity providers behind Protocols (idempotent, inventory, re-quote)
-                                   ^
-                        Traveler Support  (grounded Q&A + cancellations via the same gate)
+**100% open-source stack · real open data · no proprietary SaaS · runs locally**
 
-   Persistence: Postgres (stack) / SQLite (local)   Vectors: Qdrant / Chroma
-   Cache + pub/sub: Redis / in-process              Tracing: Langfuse   Metrics: Prometheus   Logs: structlog
-```
+</div>
 
-Agents are **loosely coupled**: each lives in its own module and registers itself in
-`AGENT_REGISTRY`. The supervisor's routing is built from the registry, so adding an
-agent is: write the module, call `register(...)`. No edits to the supervisor or peers.
+---
 
-### How the agents collaborate
+## ✨ Why Odyssey is different
 
-1. **Supervisor** extracts a structured trip brief and drives a deterministic forward
-   pipeline (memory -> research -> plan -> logistics), consulting the LLM at the
-   completion point to decide "done" vs. re-engage a specialist for a follow-up.
-2. **Memory** recalls the traveler's durable preferences and injects them into context.
-3. **Destination Intelligence** (a real ReAct tool-calling subgraph) geocodes,
-   fetches the weather forecast, and pulls matching real POIs.
-4. **Trip Planner** produces a structured itinerary, attaching geo from the real POI
-   list so venues are never hallucinated; it adapts to weather (indoor on rainy days).
-5. **Logistics** computes real OSRM walking times between stops, annotates transit,
-   and flags over-packed days.
-6. **Booking** searches/prices across mock providers and stages bookings, then the
-   `booking_confirm` gate pauses via `interrupt()` for explicit approval before
-   confirming with idempotency keys.
-7. **Traveler Support** answers questions grounded in the trip and routes
-   cancellations through the same approval gate.
-
-Every handoff and tool call is streamed to the UI, powering both the chat and the
-live mission-control panel.
-
-## Two run modes
-
-Odyssey runs the same code two ways, selected by `ODYSSEY_MODE`:
-
-| | `stack` (production) | `local` (low-resource dev) |
+| | Feature | What makes it real |
 |---|---|---|
-| Orchestration | docker compose | single `uvicorn` process |
-| Checkpointer / store | Postgres | SQLite (persists) / in-process |
-| Vectors | Qdrant | Chroma (or none) |
-| Cache / pub-sub | Redis | in-process |
-| Tracing | Langfuse | optional |
+| 📡 | **Live Mission Control** | The multi-agent system is *visible*: an animated node-graph where agents light up as they work, handoffs travel along the edges with their reasons, and tool calls stream in with args and results. Not a debug dump — a stage-demo feature. |
+| 🌍 | **Grounded in real data** | Weather from Open-Meteo, points of interest from OpenStreetMap, walking times from OSRM. The planner can only place venues that exist — **geo-coordinates are attached deterministically from real POI results, so nothing is hallucinated onto the map.** |
+| ✋ | **Human-in-the-loop bookings** | Built on LangGraph `interrupt()` — the graph *pauses* mid-execution, an approval card shows exactly what will be booked, and **nothing is ever confirmed without your explicit click**. Idempotency keys mean a retry can never double-book. |
+| 🔁 | **Durable, resumable sessions** | Conversations are checkpointed. Close the tab, restart the server, come back — the full transcript, itinerary, map, and even a *pending approval* are restored exactly where you left off. |
+| 🧠 | **Long-term memory** | "Vegetarian, hates crowds, loves temples" — remembered across sessions, recalled at the start of planning, and used to personalize every future trip. Editable in the UI. |
+| ⛈️ | **Proactive re-planning** | An event-driven monitor re-checks live weather against your outdoor plans and pushes a notification with a **one-click "ask agents to fix it"** — event bus, not polling. |
+| 🖱️ | **Drag-to-reorder timeline** | Drag a stop to a new slot and the Logistics agent re-validates real walking times between every stop, instantly and deterministically (no LLM call, no token cost). |
 
-### Run the full stack (Docker)
+---
 
-```bash
-cp .env.example .env          # set GROQ_API_KEY (or switch ODYSSEY_LLM_PROVIDER)
-docker compose up --build
-# web http://localhost:3000  api http://localhost:8000  langfuse http://localhost:3001
+## 🏗️ Architecture
+
+```mermaid
+flowchart TD
+    subgraph WEB["🖥️ Next.js 15 Workspace"]
+        direction LR
+        CHAT["💬 Streaming<br/>Chat"]
+        MAP["🗺️ MapLibre<br/>Map"]
+        TL["📅 Drag-reorder<br/>Timeline"]
+        MC["📡 Mission<br/>Control"]
+        APPR["✅ Approval<br/>Modal"]
+    end
+
+    WEB <-->|"SSE UIEvent stream<br/>tokens · tool calls · handoffs · plans · approvals"| GATEWAY
+
+    subgraph GATEWAY["⚡ FastAPI Gateway"]
+        direction LR
+        AUTH["🔐 JWT Auth"]
+        RATE["🚦 Rate Limiter"]
+        GUARD["🛡️ Guardrails<br/>+ PII redaction"]
+    end
+
+    GATEWAY --> CORE
+
+    subgraph CORE["🧠 LangGraph Multi-Agent Core"]
+        SUP(["🧭 Supervisor"])
+        MEM["💾 Memory"]
+        DEST["🌍 Destination<br/>Intelligence"]
+        PLAN["📋 Trip<br/>Planner"]
+        LOGI["👟 Logistics"]
+        BOOK["🎫 Booking"]
+        SUPP["🛟 Traveler<br/>Support"]
+        GATE{{"⏸️ booking_confirm<br/>human-in-the-loop interrupt"}}
+
+        SUP <--> MEM
+        SUP <--> DEST
+        SUP <--> PLAN
+        SUP <--> LOGI
+        SUP <--> SUPP
+        SUP --> BOOK
+        BOOK --> GATE
+        SUPP -.->|cancellations| GATE
+        GATE --> SUP
+    end
+
+    DEST -->|geocode + forecast| OM["☀️ Open-Meteo"]
+    DEST -->|real POIs| OSM["📍 OpenStreetMap<br/>Overpass"]
+    LOGI -->|walking times| OSRM["🚶 OSRM Routing"]
+    BOOK -->|search · price · book| PROV["✈️🏨🎟️ Providers<br/>(Protocol seam, mock ⇄ real)"]
+
+    CORE --- STATE[("💽 Checkpointer + Store<br/>SQLite (local) / Postgres (stack)")]
+    CORE --- OBS["📊 Langfuse traces · Prometheus metrics · structlog"]
 ```
 
-### Run locally without Docker
+**Loose coupling is the design center.** Every agent lives in its own module and self-registers in `AGENT_REGISTRY`; the supervisor's routing is assembled from the registry at runtime. Adding an agent = write one module, call `register(...)`. Zero edits to the supervisor or peers.
+
+---
+
+## 🎬 Anatomy of a planning turn
+
+What actually happens when you type *"Plan a relaxed 3-day trip to Kyoto — I love temples and gardens"*:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as 🧳 Traveler
+    participant W as Web App
+    participant S as 🧭 Supervisor
+    participant M as 💾 Memory
+    participant D as 🌍 Destination Intel
+    participant P as 📋 Trip Planner
+    participant L as 👟 Logistics
+
+    U->>W: "3 relaxed days in Kyoto - temples & gardens"
+    W->>S: open SSE stream
+    S->>S: extract structured trip brief
+    S->>M: recall traveler preferences
+    M-->>S: "vegetarian · dislikes crowds · loves temples"
+    S->>D: research the destination
+    D->>D: 🌐 geocode → ☀️ 7-day forecast → 📍 30 real POIs
+    D-->>S: grounded briefing (weather + places)
+    S->>P: build the itinerary
+    P-->>S: 3-day plan - real venues only,<br/>indoor swaps on rainy days
+    S->>L: validate day-of timing
+    L->>L: 🚶 OSRM walking times between every stop
+    L-->>S: "every day comfortably walkable ✅"
+    S-->>W: streamed wrap-up + plan_updated
+    W-->>U: 🗺️ markers + 📅 timeline animate in, live
+```
+
+Every arrow above is streamed to the browser as it happens — that's what the Mission Control panel renders.
+
+---
+
+## 🎫 The booking gate: nothing without your yes
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Offered: 🔎 agent searches providers in parallel
+    Offered --> PendingApproval: stage bookings + interrupt()
+    note right of PendingApproval
+        Graph is PAUSED.
+        Approval card shows item,
+        provider, price, cancellation.
+        Survives restarts.
+    end note
+    PendingApproval --> Confirmed: 👍 Approve (idempotency key)
+    PendingApproval --> Declined: 👎 Decline
+    Declined --> [*]: nothing charged, ever
+    Confirmed --> Cancelled: 🛟 support agent - same gate
+    Confirmed --> [*]: ref returned (e.g. VO-90554FCA)
+```
+
+The mock providers are deliberately realistic: latency, occasional failures, **price changes on re-quote, limited inventory behind a lock, and idempotent booking** — so the degradation and approval paths are genuinely exercised. A real provider (e.g. Amadeus sandbox) slots in behind the same `Protocol` with zero agent changes.
+
+---
+
+## 🤖 The team
+
+| Agent | Role | Superpower |
+|---|---|---|
+| 🧭 **Supervisor** | Orchestrator | Deterministic forward pipeline + LLM judgment at the decision point — guaranteed termination, no skipped steps, and smart follow-up routing ("swap the rainy day" → planner) |
+| 💾 **Memory** | Personalization | Recalls durable preferences before planning; salient facts written back at end-of-turn |
+| 🌍 **Destination Intelligence** | Research | ReAct tool-calling loop: geocoding, live forecasts, real POIs matched to your interests |
+| 📋 **Trip Planner** | Synthesis | Structured itineraries with geo attached only from verified places; weather-aware scheduling |
+| 👟 **Logistics** | Feasibility | Real OSRM walking times, transit annotations, over-packed-day warnings |
+| 🎫 **Booking** | Transactions | Parallel provider search, staging, and the interrupt-gated confirm with idempotency |
+| 🛟 **Traveler Support** | Concierge | Trip-grounded Q&A; cancellations routed through the same approval gate |
+
+---
+
+## 📅 Built in six verified phases
+
+```mermaid
+timeline
+    title Every phase finished, run, and verified live before the next
+    Phase 0 : Foundations
+            : monorepo · mode-aware config · structlog · Prometheus · LLM provider seam
+    Phase 1 : Vertical slice
+            : supervisor + 2 agents · real weather/POI tools · SSE streaming · map + chat UI
+    Phase 2 : Memory & motion
+            : logistics (OSRM) · long-term memory · proactive weather notifications
+    Phase 3 : Bookings + HITL
+            : provider Protocols · interrupt approval gate · traveler support
+    Phase 4 : Premium UI
+            : mission-control node-graph · drag-to-reorder · trips & preferences
+    Phase 5 : Hardening
+            : JWT auth · rate limiting · guardrails · evals · CI · Docker
+```
+
+---
+
+## 🚀 Quick start
+
+### Local mode — no Docker needed
 
 ```bash
-# Backend
+# 1. Backend
 cd apps/api
 python -m venv .venv && . .venv/Scripts/activate      # macOS/Linux: bin/activate
 pip install -e ".[dev,local,llm,auth]"
-cp ../../.env.example ../../.env                       # set GROQ_API_KEY
-python -m odyssey.db.seed                              # OpenFlights + knowledge (optional)
+cp ../../.env.example ../../.env                       # add your GROQ_API_KEY (free: console.groq.com)
+python -m odyssey.db.seed                              # 6k airports + knowledge (optional)
 ODYSSEY_MODE=local uvicorn odyssey.main:app --reload --port 8000
 
-# Frontend (separate terminal)
-cd apps/web && npm install && npm run dev             # http://localhost:3000
+# 2. Frontend (second terminal)
+cd apps/web && npm install && npm run dev              # → http://localhost:3000
 ```
 
-Health `:8000/health` . Readiness `:8000/ready` . Metrics `:8000/metrics` . API docs `:8000/docs`
-
-## Swapping the LLM
-
-All LLM access goes through `apps/api/odyssey/providers/llm_provider.py`. One env var:
+### Full stack — one command
 
 ```bash
-ODYSSEY_LLM_PROVIDER=groq    ODYSSEY_LLM_MODEL=llama-3.3-70b-versatile   # default
-ODYSSEY_LLM_PROVIDER=ollama  ODYSSEY_LLM_MODEL=qwen2.5:7b                # local weights
-ODYSSEY_LLM_PROVIDER=openai  OPENAI_BASE_URL=...  OPENAI_API_KEY=...     # vLLM/TGI/OpenRouter
+cp .env.example .env    # set GROQ_API_KEY
+docker compose up --build
+# web :3000 · api :8000 · langfuse :3001 · postgres · redis · qdrant
 ```
 
-> Note: the Groq free tier is rate-limited (~100k tokens/day on the 70B model). For
-> heavy testing switch to `llama-3.1-8b-instant` or a served endpoint.
+| | `local` mode | `stack` mode |
+|---|---|---|
+| Checkpointer / store | SQLite (persists) / in-process | Postgres |
+| Vectors | Chroma | Qdrant |
+| Pub/sub | in-process | Redis |
+| Tracing | optional | Langfuse |
 
-## Testing, evals, CI
+Endpoints: `/health` · `/ready` · `/metrics` (Prometheus) · `/docs` (OpenAPI)
+
+### Swap the LLM with one env var
 
 ```bash
-cd apps/api && pytest -q          # 37 tests (schemas, providers, agents, security, evals)
-ruff check odyssey tests          # lint
-python -m odyssey.evals.run       # golden-scenario evals (deterministic checks + LLM judge)
-cd apps/web && npx tsc --noEmit && npm run build
+ODYSSEY_LLM_PROVIDER=groq    ODYSSEY_LLM_MODEL=llama-3.3-70b-versatile   # default (free tier)
+ODYSSEY_LLM_PROVIDER=ollama  ODYSSEY_LLM_MODEL=qwen2.5:7b                # local open weights
+ODYSSEY_LLM_PROVIDER=openai  OPENAI_BASE_URL=... OPENAI_API_KEY=...      # vLLM / TGI / OpenRouter
 ```
 
-GitHub Actions (`.github/workflows/ci.yml`) runs ruff, pyright, pytest, the web
-typecheck + build, and a docker build on every push.
+> ⚠️ Groq's free tier is rate-limited (~100k tokens/day on the 70B). For sustained use, point `openai` at any served endpoint.
 
-## Security & ops
+---
 
-- **Auth**: JWT sessions (bcrypt-hashed passwords). `AUTH_REQUIRED` gates enforcement;
-  the demo works signed-out via an anon id.
-- **Rate limiting**: per-user/IP token bucket on the API surface.
-- **Guardrails**: input sanitization + PII redaction (email/phone/card/SSN) in logs.
-- **Resilience**: every external tool has timeout + retry + a per-host circuit breaker;
-  agents degrade gracefully (partial results / fallbacks) so one failure never crashes
-  the graph. Mock booking providers are idempotent with limited inventory.
+## 🔬 Quality bar
 
-## Documentation
+```
+✔ 37 backend tests        schemas · planner mapping · routing · providers ·
+                          idempotency · inventory · security · guardrails · evals
+✔ ruff clean              lint + import order
+✔ tsc --noEmit clean      strict TypeScript
+✔ GitHub Actions CI       ruff · pyright · pytest · tsc · next build · docker build
+✔ Eval harness            deterministic checks (budget · timing feasibility ·
+                          no-double-booking · grounded-in-real-POIs) + LLM-as-judge
+```
 
-- PLAN.md - repo layout, run modes, phase roadmap
-- DECISIONS.md - every choice + one line of reasoning
-- PROGRESS.md - live checklist mapped to the phases and definition of done
-- AGENTS.md - each agent's purpose, inputs, outputs, tools, and delegation rules
+**Resilience by default** — every external call has timeout, retry with backoff, and a per-host circuit breaker. Overpass rotates 4 public mirrors. Failed tools degrade to partial results or fallbacks; one failing agent never takes down the graph.
 
-## License
+**Security** — JWT sessions with bcrypt-hashed passwords (demo works signed-out), per-user token-bucket rate limiting, input sanitization, and PII redaction (emails/phones/cards/SSNs) baked into the logging pipeline.
 
-MIT.
+---
+
+## 📁 Repository layout
+
+```
+odyssey/
+├── apps/
+│   ├── api/                    # FastAPI backend
+│   │   ├── odyssey/
+│   │   │   ├── agents/         # one module per agent + registry (loose coupling)
+│   │   │   ├── graph/          # TravelState · assembly · checkpointing · SSE mapper
+│   │   │   ├── providers/      # LLM seam · open-data tools · booking Protocols + mocks
+│   │   │   ├── memory/         # long-term store · users · session index
+│   │   │   ├── proactive/      # conditions monitor (event-driven re-planning)
+│   │   │   ├── evals/          # deterministic checks + LLM judge + golden runner
+│   │   │   ├── api/            # auth · chat/stream · sessions · memory · notifications
+│   │   │   └── core/           # config · logging · telemetry · guardrails · security
+│   │   └── tests/              # 37 tests
+│   └── web/                    # Next.js 15 + React 19 + Tailwind + Framer Motion
+│       └── src/components/     # MissionControlGraph · MapCanvas · ItineraryTimeline ·
+│                               # ApprovalModal · LibraryPanel · AuthModal ...
+├── docker-compose.yml          # postgres · redis · qdrant · langfuse · api · web
+├── .github/workflows/ci.yml
+└── PLAN.md · DECISIONS.md · PROGRESS.md · AGENTS.md
+```
+
+---
+
+## 📚 Documentation
+
+| Doc | What's inside |
+|---|---|
+| [PLAN.md](PLAN.md) | Repo layout, run modes, phased roadmap |
+| [DECISIONS.md](DECISIONS.md) | Every non-trivial choice with one line of reasoning — including the bugs found by running (CRLF SSE framing, `Command` vs static edges, `as_node` persistence) |
+| [PROGRESS.md](PROGRESS.md) | The live checklist, mapped to the definition of done |
+| [AGENTS.md](AGENTS.md) | Each agent's contract: purpose, I/O, tools, delegation rules |
+
+---
+
+<div align="center">
+
+**MIT License** — built entirely on open source: LangGraph · FastAPI · Next.js · MapLibre · Open-Meteo · OpenStreetMap · OSRM · Qdrant · Langfuse
+
+*Odyssey was built phase-by-phase with every feature verified live in the browser before moving on.*
+
+</div>
