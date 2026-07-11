@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useRef, useState } from "react";
+import { Reorder, useDragControls } from "framer-motion";
 import {
   Bed,
   Bus,
@@ -9,6 +9,7 @@ import {
   CloudRain,
   Coffee,
   Footprints,
+  GripVertical,
   Landmark,
   MapPin,
   Plane,
@@ -19,8 +20,8 @@ import {
   Wallet,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { recheckConditions } from "@/lib/api";
-import type { ItineraryDay as ItineraryDayT, ItineraryItem } from "@/lib/types";
+import { recheckConditions, reorderItinerary } from "@/lib/api";
+import type { Itinerary, ItineraryDay as ItineraryDayT, ItineraryItem } from "@/lib/types";
 import { DAY_COLORS } from "./MapCanvas";
 import { BookingsPanel } from "./BookingsPanel";
 import { cn, currency } from "@/lib/utils";
@@ -39,8 +40,11 @@ export function ItineraryTimeline() {
   const itinerary = useStore((s) => s.itinerary);
   const selectedItemId = useStore((s) => s.selectedItemId);
   const selectItem = useStore((s) => s.selectItem);
+  const setItinerary = useStore((s) => s.setItinerary);
   const sessionId = useStore((s) => s.sessionId);
   const [rechecking, setRechecking] = useState(false);
+  const [revalidating, setRevalidating] = useState(false);
+  const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function recheck() {
     if (!sessionId || rechecking) return;
@@ -50,6 +54,23 @@ export function ItineraryTimeline() {
     } finally {
       setTimeout(() => setRechecking(false), 600);
     }
+  }
+
+  function onDayReorder(dayNum: number, nextItems: ItineraryItem[]) {
+    if (!itinerary) return;
+    const next: Itinerary = {
+      ...itinerary,
+      days: itinerary.days.map((d) => (d.day === dayNum ? { ...d, items: nextItems } : d)),
+    };
+    setItinerary(next); // optimistic
+    if (commitTimer.current) clearTimeout(commitTimer.current);
+    commitTimer.current = setTimeout(async () => {
+      if (!sessionId) return;
+      setRevalidating(true);
+      const revalidated = await reorderItinerary(sessionId, next);
+      if (revalidated) setItinerary(revalidated); // updated transit + feasibility
+      setTimeout(() => setRevalidating(false), 400);
+    }, 550);
   }
 
   if (!itinerary || itinerary.days.length === 0) {
@@ -72,6 +93,7 @@ export function ItineraryTimeline() {
           <span className="text-xs font-normal text-faint">
             {itinerary.days.length} {itinerary.days.length === 1 ? "day" : "days"}
           </span>
+          {revalidating && <span className="text-[10px] text-accent">re-checking timing...</span>}
         </div>
         <div className="flex items-center gap-1.5">
           <div className="flex items-center gap-1.5 rounded-lg border border-border bg-surface-2 px-2.5 py-1 text-xs text-muted">
@@ -107,31 +129,31 @@ export function ItineraryTimeline() {
                 {day.summary && <span className="truncate text-xs text-faint">- {day.summary}</span>}
                 <DayFeasibility day={day} />
               </div>
-              <div className="ml-3 space-y-1.5 border-l border-border pl-3">
-                <AnimatePresence initial={false}>
-                  {day.items.map((item, i) => (
-                    <div key={item.id}>
-                      <ItemRow
-                        item={item}
-                        color={color}
-                        selected={item.id === selectedItemId}
-                        onSelect={() => selectItem(item.id === selectedItemId ? null : item.id)}
-                      />
-                      {item.transit_to_next_min != null && i < day.items.length - 1 && (
-                        <div className="flex items-center gap-1.5 py-1 pl-3 text-[10.5px] text-faint">
-                          <Footprints className="h-3 w-3" />
-                          {Math.round(item.transit_to_next_min)} min walk
-                          {item.transit_to_next_km ? ` (${item.transit_to_next_km.toFixed(1)} km)` : ""}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </AnimatePresence>
+              <Reorder.Group
+                as="div"
+                axis="y"
+                values={day.items}
+                onReorder={(next) => onDayReorder(day.day, next as ItineraryItem[])}
+                className="ml-3 space-y-1.5 border-l border-border pl-3"
+              >
+                {day.items.map((item, i) => (
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    color={color}
+                    selected={item.id === selectedItemId}
+                    isLast={i === day.items.length - 1}
+                    onSelect={() => selectItem(item.id === selectedItemId ? null : item.id)}
+                  />
+                ))}
                 {day.items.length === 0 && <div className="py-1 text-xs text-faint">Open day</div>}
-              </div>
+              </Reorder.Group>
             </div>
           );
         })}
+        <p className="px-1 text-center text-[10.5px] text-faint">
+          Tip: drag stops by the handle to reorder - Logistics re-checks the timing.
+        </p>
       </div>
     </div>
   );
@@ -158,64 +180,81 @@ function ItemRow({
   item,
   color,
   selected,
+  isLast,
   onSelect,
 }: {
   item: ItineraryItem;
   color: string;
   selected: boolean;
+  isLast: boolean;
   onSelect: () => void;
 }) {
   const Icon = TYPE_ICON[item.type] ?? MapPin;
+  const controls = useDragControls();
   return (
-    <motion.button
-      layout
-      initial={{ opacity: 0, x: -6 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.22 }}
-      onClick={onSelect}
+    <Reorder.Item
+      as="div"
+      value={item}
+      dragListener={false}
+      dragControls={controls}
       className={cn(
-        "group flex w-full items-start gap-2.5 rounded-lg border px-2.5 py-2 text-left transition",
-        selected
-          ? "border-accent/50 bg-accent-soft shadow-soft"
-          : "border-transparent hover:border-border hover:bg-surface-2",
+        "group rounded-lg border transition",
+        selected ? "border-accent/50 bg-accent-soft shadow-soft" : "border-transparent hover:border-border hover:bg-surface-2",
       )}
     >
-      <span
-        className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md"
-        style={{ background: `${color}20`, color }}
-      >
-        <Icon className="h-3.5 w-3.5" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2">
-          {item.start && <span className="font-mono text-[11px] text-faint">{item.start}</span>}
-          <span className="truncate text-[13px] font-medium text-fg">{item.title}</span>
-        </span>
-        {item.description && (
-          <span className="mt-0.5 line-clamp-2 block text-[11.5px] leading-snug text-muted">
-            {item.description}
+      <div className="flex items-start gap-2 px-2 py-2">
+        <button
+          onPointerDown={(e) => controls.start(e)}
+          className="mt-1 cursor-grab touch-none text-faint transition hover:text-muted active:cursor-grabbing"
+          aria-label="Drag to reorder"
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </button>
+        <button onClick={onSelect} className="flex min-w-0 flex-1 items-start gap-2.5 text-left">
+          <span
+            className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md"
+            style={{ background: `${color}20`, color }}
+          >
+            <Icon className="h-3.5 w-3.5" />
           </span>
-        )}
-        <span className="mt-1 flex flex-wrap items-center gap-1.5">
-          {item.geo && (
-            <span className="inline-flex items-center gap-0.5 text-[10.5px] text-faint">
-              <MapPin className="h-3 w-3" /> on map
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-2">
+              {item.start && <span className="font-mono text-[11px] text-faint">{item.start}</span>}
+              <span className="truncate text-[13px] font-medium text-fg">{item.title}</span>
             </span>
-          )}
-          {typeof item.cost_estimate === "number" && item.cost_estimate > 0 && (
-            <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10.5px] text-muted">
-              {currency(item.cost_estimate, item.currency)}
+            {item.description && (
+              <span className="mt-0.5 line-clamp-2 block text-[11.5px] leading-snug text-muted">
+                {item.description}
+              </span>
+            )}
+            <span className="mt-1 flex flex-wrap items-center gap-1.5">
+              {item.geo && (
+                <span className="inline-flex items-center gap-0.5 text-[10.5px] text-faint">
+                  <MapPin className="h-3 w-3" /> on map
+                </span>
+              )}
+              {typeof item.cost_estimate === "number" && item.cost_estimate > 0 && (
+                <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10.5px] text-muted">
+                  {currency(item.cost_estimate, item.currency)}
+                </span>
+              )}
+              {item.weather_note && (
+                <span className="inline-flex items-center gap-0.5 rounded bg-sky-500/10 px-1.5 py-0.5 text-[10.5px] text-sky-400">
+                  <CloudRain className="h-3 w-3" /> {item.weather_note}
+                </span>
+              )}
             </span>
-          )}
-          {item.weather_note && (
-            <span className="inline-flex items-center gap-0.5 rounded bg-sky-500/10 px-1.5 py-0.5 text-[10.5px] text-sky-400">
-              <CloudRain className="h-3 w-3" /> {item.weather_note}
-            </span>
-          )}
-        </span>
-      </span>
-    </motion.button>
+          </span>
+        </button>
+      </div>
+      {item.transit_to_next_min != null && !isLast && (
+        <div className="flex items-center gap-1.5 border-t border-border/60 px-3 py-1 text-[10.5px] text-faint">
+          <Footprints className="h-3 w-3" />
+          {Math.round(item.transit_to_next_min)} min walk to next
+          {item.transit_to_next_km ? ` (${item.transit_to_next_km.toFixed(1)} km)` : ""}
+        </div>
+      )}
+    </Reorder.Item>
   );
 }
 

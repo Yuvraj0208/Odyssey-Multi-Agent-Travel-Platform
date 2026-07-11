@@ -118,6 +118,20 @@ One line of reasoning per choice. Newest at the bottom of each section.
 - Booking search/confirm/cancel are wrapped as LangChain tools so provider calls show
   natively in mission-control (same pattern as the other agents' tools).
 
+## Phase 4 (premium UI, mission-control node-graph)
+
+- Mission Control is a node-graph: HTML nodes positioned over an SVG connector layer
+  in a shared coordinate space (container aspect-ratio = viewBox), so lines meet node
+  centers without measuring the DOM. A handoff animates a dot along the edge via SVG
+  animateMotion keyed by handoff id. Reason: crisp icons/labels (HTML) + precise,
+  cheap vector connectors (SVG), no layout thrash.
+- Drag-to-reorder uses Framer Motion's built-in Reorder (no new dependency); a drag
+  handle (dragListener=false + useDragControls) keeps click-to-select working. Reorder
+  optimistically updates the store, then a debounced POST /reorder persists + re-runs
+  the deterministic logistics re-validation (real OSRM timing, no LLM/token cost).
+- Trips history + preferences are a single slide-over with tabs, backed by a store
+  session index and the memory CRUD API. Reason: one surface, minimal chrome.
+
 ## Frontend
 
 - Next.js 15 App Router + React 19 + TS, Tailwind + shadcn/ui, Framer Motion,

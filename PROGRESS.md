@@ -88,11 +88,15 @@ Legend: [x] done and verified, [~] in progress, [ ] not started.
 
 ## Phase 4 - Premium UI + mission control
 
-- [ ] Design language + three-region workspace
-- [ ] Drag-to-reorder timeline -> re-validate logistics
-- [ ] Live agent mission-control panel
-- [ ] Real telemetry (tokens/cost/latency)
-- [ ] Notifications inbox
+- [x] Design language + three-region workspace (refined; focus rings, selection)
+- [x] Drag-to-reorder timeline (Framer Reorder) -> POST /reorder re-validates
+      logistics timing deterministically (OSRM, no LLM)
+- [x] Live agent mission-control NODE-GRAPH: agents as nodes, active nodes pulse,
+      handoffs animate a dot traveling along the connector, real telemetry
+- [x] Real telemetry (tokens/cost/latency) - latency now populated per turn
+- [x] Notifications inbox (Phase 2) + Trips history + Preferences slide-over
+      (store-backed sessions index + memory CRUD API)
+- [ ] Verify LIVE in browser (node-graph animation, drag-reorder, trips/prefs)
 
 ## Phase 5 - Hardening
 

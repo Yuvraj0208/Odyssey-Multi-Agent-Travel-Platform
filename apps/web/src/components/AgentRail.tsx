@@ -1,29 +1,17 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Activity,
-  ArrowRight,
-  CheckCircle2,
-  CircleDot,
-  Coins,
-  Cpu,
-  Gauge,
-  Loader2,
-  Wrench,
-  Zap,
-} from "lucide-react";
+import { Activity, ArrowRight, Coins, Cpu, Gauge, Loader2, Timer, Wrench, Zap } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { agentMeta } from "./agentMeta";
+import { MissionControlGraph } from "./MissionControlGraph";
 import { cn } from "@/lib/utils";
-import type { AgentStatus } from "@/lib/types";
 
 export function AgentRail() {
-  const agents = useStore((s) => s.agents);
-  const status = useStore((s) => s.agentStatus);
   const tools = useStore((s) => s.tools);
   const handoffs = useStore((s) => s.handoffs);
   const telemetry = useStore((s) => s.telemetry);
+  const streaming = useStore((s) => s.streaming);
 
   return (
     <div className="flex h-full flex-col bg-surface/40">
@@ -32,15 +20,20 @@ export function AgentRail() {
           <Activity className="h-3.5 w-3.5" />
         </span>
         <div className="text-sm font-semibold">Mission Control</div>
-        <span className="ml-auto text-[10px] uppercase tracking-wide text-faint">live</span>
+        <span
+          className={cn(
+            "ml-auto flex items-center gap-1 text-[10px] uppercase tracking-wide",
+            streaming ? "text-accent" : "text-faint",
+          )}
+        >
+          <span className={cn("h-1.5 w-1.5 rounded-full", streaming ? "animate-pulse bg-accent" : "bg-border-strong")} />
+          live
+        </span>
       </div>
 
-      {/* Agent nodes */}
-      <div className="space-y-1.5 border-b border-border px-3 py-3">
-        {agents.map((a) => (
-          <AgentNode key={a.name} name={a.name} status={status[a.name] ?? "idle"} role={a.role} />
-        ))}
-        {agents.length === 0 && <div className="px-1 py-2 text-xs text-faint">Loading agent team...</div>}
+      {/* Agent node-graph */}
+      <div className="border-b border-border px-3 py-3">
+        <MissionControlGraph />
       </div>
 
       {/* Activity feed */}
@@ -74,49 +67,19 @@ export function AgentRail() {
           <Stat icon={<Wrench className="h-3.5 w-3.5" />} label="Tool calls" value={String(telemetry?.tool_calls ?? 0)} />
           <Stat icon={<Gauge className="h-3.5 w-3.5" />} label="Agent steps" value={String(telemetry?.agent_steps ?? 0)} />
         </div>
-        <div className="mt-2 flex items-center gap-1.5 px-1 text-[10.5px] text-faint">
-          <Cpu className="h-3 w-3" /> {telemetry?.model ?? "awaiting first run"}
+        <div className="mt-2 flex items-center justify-between px-1 text-[10.5px] text-faint">
+          <span className="flex items-center gap-1.5">
+            <Cpu className="h-3 w-3" /> {telemetry?.model ?? "awaiting first run"}
+          </span>
+          {telemetry && telemetry.last_latency_ms > 0 && (
+            <span className="flex items-center gap-1">
+              <Timer className="h-3 w-3" /> {(telemetry.last_latency_ms / 1000).toFixed(1)}s
+            </span>
+          )}
         </div>
       </div>
     </div>
   );
-}
-
-function AgentNode({ name, status, role }: { name: string; status: AgentStatus; role?: string }) {
-  const meta = agentMeta(name);
-  const Icon = meta.Icon;
-  const active = status === "active";
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-2.5 rounded-xl border px-2.5 py-2 transition",
-        active ? cn("border-transparent ring-1", meta.ring, meta.bg) : "border-border bg-surface",
-      )}
-    >
-      <span
-        className={cn(
-          "relative grid h-8 w-8 place-items-center rounded-lg",
-          meta.bg,
-          active && "animate-pulse-ring",
-        )}
-      >
-        <Icon className={cn("h-4 w-4", meta.text)} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[12.5px] font-medium text-fg">{meta.label}</div>
-        <div className="text-[10px] text-faint">{role === "supervisor" ? "orchestrator" : "specialist"}</div>
-      </div>
-      <StatusPip status={status} />
-    </div>
-  );
-}
-
-function StatusPip({ status }: { status: AgentStatus }) {
-  if (status === "active")
-    return <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />;
-  if (status === "done") return <CheckCircle2 className="h-3.5 w-3.5 text-success" />;
-  if (status === "error") return <CircleDot className="h-3.5 w-3.5 text-danger" />;
-  return <span className="h-2 w-2 rounded-full bg-border-strong" />;
 }
 
 function ToolCard({ row }: { row: ReturnType<typeof useStore.getState>["tools"][number] }) {

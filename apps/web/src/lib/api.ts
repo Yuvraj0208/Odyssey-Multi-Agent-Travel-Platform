@@ -105,6 +105,44 @@ export async function getNotifications(): Promise<Notification[]> {
   return j.notifications as Notification[];
 }
 
+export async function reorderItinerary(sessionId: string, itinerary: any): Promise<any> {
+  const r = await fetch(`${BASE}/api/sessions/${sessionId}/reorder`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-user-id": userId() },
+    body: JSON.stringify({ itinerary }),
+  });
+  if (!r.ok) return null;
+  const j = await r.json();
+  return j.itinerary;
+}
+
+export async function listSessions(): Promise<any[]> {
+  const r = await fetch(`${BASE}/api/sessions`, { headers: { "x-user-id": userId() } });
+  if (!r.ok) return [];
+  return (await r.json()).sessions ?? [];
+}
+
+export async function getMemories(): Promise<any[]> {
+  const r = await fetch(`${BASE}/api/memory`, { headers: { "x-user-id": userId() } });
+  if (!r.ok) return [];
+  return (await r.json()).memories ?? [];
+}
+
+export async function addMemory(text: string, kind = "preference", tags: string[] = []): Promise<void> {
+  await fetch(`${BASE}/api/memory`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-user-id": userId() },
+    body: JSON.stringify({ text, kind, tags }),
+  }).catch(() => {});
+}
+
+export async function deleteMemory(key: string): Promise<void> {
+  await fetch(`${BASE}/api/memory/${key}`, {
+    method: "DELETE",
+    headers: { "x-user-id": userId() },
+  }).catch(() => {});
+}
+
 export async function recheckConditions(sessionId: string): Promise<{ issues: number }> {
   const r = await fetch(`${BASE}/api/sessions/${sessionId}/recheck`, {
     method: "POST",

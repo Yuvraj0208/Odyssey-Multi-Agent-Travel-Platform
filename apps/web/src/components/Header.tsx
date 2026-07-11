@@ -1,6 +1,6 @@
 "use client";
 
-import { Compass, Coins, Plus, Sparkles, Zap } from "lucide-react";
+import { Clock, Coins, Compass, Plus, SlidersHorizontal, Sparkles, Zap } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ThemeToggle } from "./ThemeToggle";
 import { NotificationBell } from "./NotificationBell";
@@ -10,10 +10,14 @@ export function Header({
   onNewTrip,
   onToggleRail,
   railOpen,
+  onOpenTrips,
+  onOpenPreferences,
 }: {
   onNewTrip: () => void;
   onToggleRail: () => void;
   railOpen: boolean;
+  onOpenTrips: () => void;
+  onOpenPreferences: () => void;
 }) {
   const telemetry = useStore((s) => s.telemetry);
   const itinerary = useStore((s) => s.itinerary);
@@ -50,6 +54,20 @@ export function Header({
             <span className="text-faint">{telemetry.model}</span>
           </div>
         )}
+        <button
+          onClick={onOpenTrips}
+          title="Trips history"
+          className="hidden h-9 w-9 place-items-center rounded-lg border border-border text-muted transition hover:bg-surface-2 hover:text-fg sm:grid"
+        >
+          <Clock className="h-4 w-4" />
+        </button>
+        <button
+          onClick={onOpenPreferences}
+          title="Preferences"
+          className="hidden h-9 w-9 place-items-center rounded-lg border border-border text-muted transition hover:bg-surface-2 hover:text-fg sm:grid"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+        </button>
         <button
           onClick={onNewTrip}
           className="flex items-center gap-1.5 rounded-lg border border-border bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg transition hover:bg-elevated"

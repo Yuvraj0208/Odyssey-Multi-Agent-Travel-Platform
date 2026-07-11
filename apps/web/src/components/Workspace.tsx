@@ -10,6 +10,7 @@ import { ItineraryTimeline } from "./ItineraryTimeline";
 import { AgentRail } from "./AgentRail";
 import { Toaster } from "./Toaster";
 import { ApprovalModal } from "./ApprovalModal";
+import { LibraryPanel, type LibraryTab } from "./LibraryPanel";
 import { useNotifications } from "@/hooks/useNotifications";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ export function Workspace() {
   const { setSession, setAgents, hydrate, reset } = useStore();
   const [ready, setReady] = useState(false);
   const [railOpen, setRailOpen] = useState(true);
+  const [libraryTab, setLibraryTab] = useState<LibraryTab | null>(null);
   useNotifications();
 
   useEffect(() => {
@@ -55,9 +57,27 @@ export function Workspace() {
     setSession(sid);
   }
 
+  async function loadSession(sid: string) {
+    localStorage.setItem(SESSION_KEY, sid);
+    reset();
+    setSession(sid);
+    try {
+      const state = await getSessionState(sid);
+      if (state?.exists) hydrate(state);
+    } catch {
+      /* ignore */
+    }
+  }
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <Header onNewTrip={newTrip} onToggleRail={() => setRailOpen((v) => !v)} railOpen={railOpen} />
+      <Header
+        onNewTrip={newTrip}
+        onToggleRail={() => setRailOpen((v) => !v)}
+        railOpen={railOpen}
+        onOpenTrips={() => setLibraryTab("trips")}
+        onOpenPreferences={() => setLibraryTab("preferences")}
+      />
       <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(360px,0.9fr)_1.3fr] xl:grid-cols-[minmax(380px,0.85fr)_1.35fr_minmax(300px,0.55fr)]">
         {/* Left: conversation */}
         <section className="min-h-0 border-r border-border">
@@ -96,6 +116,7 @@ export function Workspace() {
 
       <Toaster />
       <ApprovalModal />
+      <LibraryPanel tab={libraryTab} onClose={() => setLibraryTab(null)} onLoadSession={loadSession} />
     </div>
   );
 }

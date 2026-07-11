@@ -47,6 +47,7 @@ interface OdysseyState {
   endTurn: () => void;
   applyEvent: (ev: UIEvent) => void;
   selectItem: (id: string | null) => void;
+  setItinerary: (it: Itinerary) => void;
   addNotification: (n: Notification) => void;
   markNotificationRead: (id: string) => void;
   clearApproval: () => void;
@@ -260,6 +261,7 @@ export const useStore = create<OdysseyState>((set, get) => ({
   },
 
   selectItem: (id) => set({ selectedItemId: id }),
+  setItinerary: (it) => set({ itinerary: it }),
   clearApproval: () => set({ approval: null }),
 
   addNotification: (n) =>
