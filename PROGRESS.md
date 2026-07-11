@@ -4,14 +4,17 @@ Legend: [x] done and verified, [~] in progress, [ ] not started.
 
 ## Definition of done (the six)
 
-- [ ] 1. Clean premium web app, sign in, start a conversation.
-- [ ] 2. Describe a trip in natural language; a team of agents plans it live, with
-      collaboration visible (who works, what tool, what decision).
-- [ ] 3. Beautiful itinerary on an interactive map + day-by-day timeline, grounded
-      in real open tourism data.
-- [ ] 4. Flight/hotel/activity options; explicit approval before any booking.
-- [ ] 5. Resume the same conversation later; system remembers preferences.
-- [ ] 6. Runs locally with one command; full tracing, logs, metrics, tests.
+- [~] 1. Clean premium web app, start a conversation. (Workspace + chat done;
+      sign-in/auth lands in Phase 5.)
+- [x] 2. Describe a trip in natural language; a team of agents plans it live, with
+      collaboration visible (handoffs, tool calls, results in mission-control).
+- [x] 3. Beautiful itinerary on an interactive map + day-by-day timeline, grounded
+      in real open tourism data (weather, POIs). (Premium polish continues Phase 4.)
+- [ ] 4. Flight/hotel/activity options; explicit approval before any booking. (Phase 3)
+- [~] 5. Resume the same conversation later (checkpointer verified); long-term
+      preference memory lands in Phase 2.
+- [~] 6. Runs locally (local mode verified); one-command docker + full tracing/
+      metrics wired, end-to-end stack run pending a Docker host.
 
 ## Phase 0 - Foundations
 
@@ -44,8 +47,10 @@ Legend: [x] done and verified, [~] in progress, [ ] not started.
 - [x] Itinerary render + MapLibre map (markers, bounds, selection sync)
 - [x] Mission-control agent rail + telemetry (Phase 4 will elevate to node-graph)
 - [x] Backend test suite (15 tests, deterministic core logic) passing
-- [ ] Verify LIVE: trip request -> two agents collaborate -> map itinerary ->
-      resume after restart (BLOCKED: needs GROQ_API_KEY in .env)
+- [x] Verify LIVE (browser, real Groq): trip request -> supervisor routes ->
+      destination intel (geocode + weather + 30 real POIs) -> planner builds
+      grounded itinerary -> streamed wrap-up; handoffs + tool calls visible in
+      mission-control activity feed; map markers + timeline; resume after reload
 
 ## Phase 2 - More agents + memory
 
