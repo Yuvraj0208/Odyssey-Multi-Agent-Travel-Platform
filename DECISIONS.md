@@ -100,6 +100,24 @@ One line of reasoning per choice. Newest at the bottom of each section.
   streamed over SSE. A ?demo=true flag on recheck exercises the full path when live
   weather is benign. Reason: genuinely event-driven, not a poll baked into the turn.
 
+## Phase 3 (bookings, human-in-the-loop)
+
+- HITL approval uses a dynamic interrupt() inside a booking_confirm node, not the
+  spec's static interrupt_before. Reason: dynamic interrupt passes the rich approval
+  payload out and the decision back in cleanly; search/confirm are split into two
+  nodes so staged bookings are committed to state before the pause (resume re-runs
+  only the confirm step, so no double search).
+- Agents that route via Command(goto=...) set AgentSpec.dynamic_routing=True and the
+  build skips their automatic edge to the supervisor. Reason: a Command goto plus a
+  static edge both fire, racing writes to shared state keys (InvalidUpdateError).
+- confirmed_bookings is last-writer-wins (full list managed in booking_confirm) so
+  cancellations can flip an existing booking's status; pending_bookings is cleared on
+  confirm/decline. Idempotency keys are generated at stage time and reused on confirm.
+- Mock providers only; traveler is a placeholder ("Guest Traveler") - no real PII or
+  payment is ever collected, matching the "never enter financial/PII" safety rule.
+- Booking search/confirm/cancel are wrapped as LangChain tools so provider calls show
+  natively in mission-control (same pattern as the other agents' tools).
+
 ## Frontend
 
 - Next.js 15 App Router + React 19 + TS, Tailwind + shadcn/ui, Framer Motion,

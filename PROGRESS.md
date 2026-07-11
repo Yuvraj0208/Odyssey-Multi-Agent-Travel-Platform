@@ -10,7 +10,8 @@ Legend: [x] done and verified, [~] in progress, [ ] not started.
       collaboration visible (handoffs, tool calls, results in mission-control).
 - [x] 3. Beautiful itinerary on an interactive map + day-by-day timeline, grounded
       in real open tourism data (weather, POIs). (Premium polish continues Phase 4.)
-- [ ] 4. Flight/hotel/activity options; explicit approval before any booking. (Phase 3)
+- [x] 4. Flight/hotel/activity options; explicit approval before any booking.
+      (Phase 3, verified live: approval modal gates all confirmations.)
 - [x] 5. Resume the same conversation later (checkpointer verified); long-term
       preference memory now recalls across sessions (Phase 2, verified live).
 - [~] 6. Runs locally (local mode verified); one-command docker + full tracing/
@@ -73,11 +74,17 @@ Legend: [x] done and verified, [~] in progress, [ ] not started.
 
 ## Phase 3 - Bookings + HITL
 
-- [ ] FlightProvider/HotelProvider/ActivityProvider Protocols + mocks
-- [ ] Booking agent + idempotency
-- [ ] Interrupt-based approval gate + resume
-- [ ] Traveler Support agent
-- [ ] UI: options cards, approval modal, pending vs confirmed
+- [x] Flight/Hotel/Activity Protocols + realistic mocks (latency, failures,
+      re-quote pricing, limited inventory w/ lock, idempotent booking, cancel)
+- [x] Provider registry (parallel search, merge, graceful degradation)
+- [x] Booking agent (intent parse, search + price + stage) + idempotency keys
+- [x] Interrupt-based approval gate (dynamic interrupt()) + resume_turn + resume endpoint
+- [x] Traveler Support agent (grounded Q&A + cancellations through the gate)
+- [x] Registry dynamic_routing (Command(goto) agents skip auto supervisor edge)
+- [x] UI: options cards, approval modal, pending vs confirmed (Bookings panel)
+- [x] 5 Phase-3 tests (26 total)
+- [x] Verified LIVE in browser: book -> approval modal -> approve -> both confirmed
+      with refs; decline books nothing; idempotency + inventory hold (7-agent MC)
 
 ## Phase 4 - Premium UI + mission control
 
