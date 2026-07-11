@@ -64,9 +64,10 @@ export async function streamChat(
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+    // Normalize CRLF -> LF: sse-starlette emits \r\n line endings, so frames are
+    // separated by \r\n\r\n. Stripping raw \r lets us split on the blank line.
+    buffer += decoder.decode(value, { stream: true }).replace(/\r/g, "");
 
-    // SSE frames are separated by a blank line.
     let sep: number;
     while ((sep = buffer.indexOf("\n\n")) !== -1) {
       const frame = buffer.slice(0, sep);

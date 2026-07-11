@@ -85,8 +85,13 @@ def _extract_usage(output: Any) -> tuple[int, int, str | None]:
 
 
 def _agents_public() -> list[dict]:
-    supervisor = {"name": SUPERVISOR, "description": "Orchestrates the team and routes work.", "phase": 1}
-    return [supervisor, *registry_public()]
+    supervisor = {
+        "name": SUPERVISOR,
+        "description": "Orchestrates the team and routes work.",
+        "phase": 1,
+        "role": "supervisor",
+    }
+    return [supervisor, *({**a, "role": "specialist"} for a in registry_public())]
 
 
 async def stream_turn(
