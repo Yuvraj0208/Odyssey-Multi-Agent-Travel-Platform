@@ -50,17 +50,21 @@ async def get_weather(
         "daily": "weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
         "timezone": "auto",
     }
-    horizon = date.today() + timedelta(days=16)
+    today = date.today()
+    horizon = today + timedelta(days=16)
     estimate = False
     if start_date and end_date:
         try:
             sd, ed = date.fromisoformat(start_date), date.fromisoformat(end_date)
-            if sd <= horizon:
-                params["start_date"] = start_date
-                params["end_date"] = min(ed, horizon).isoformat()
-            else:
-                estimate = True  # beyond horizon: fall back to default 7-day forecast
+            # Open-Meteo's forecast endpoint only covers [today, today+16]. Anything
+            # in the past or beyond the horizon becomes a seasonal estimate rather
+            # than a 400 error.
+            if sd < today or sd > horizon:
+                estimate = True
                 params["forecast_days"] = 7
+            else:
+                params["start_date"] = max(sd, today).isoformat()
+                params["end_date"] = min(ed, horizon).isoformat()
         except ValueError:
             params["forecast_days"] = 7
     else:

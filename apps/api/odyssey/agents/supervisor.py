@@ -111,10 +111,16 @@ async def supervisor_node(state: dict) -> dict:
     # 1. Extract / merge the brief (only meaningful early; cheap and idempotent).
     updates: dict = {"active_agent": SUPERVISOR}
     if not itinerary:  # once a plan exists we stop re-extracting
+        from datetime import date
+
+        date_note = (
+            f"Today's date is {date.today().isoformat()}. Interpret months or seasons without a "
+            f"year as the next upcoming occurrence; never use a past year."
+        )
         extract = await safe_structured(
             llm,
             BriefExtract,
-            [SystemMessage(content=SUPERVISOR_BRIEF_EXTRACT), *messages],
+            [SystemMessage(content=SUPERVISOR_BRIEF_EXTRACT + "\n" + date_note), *messages],
             agent=SUPERVISOR,
         )
         if extract is not None:

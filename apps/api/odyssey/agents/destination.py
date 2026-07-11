@@ -35,6 +35,8 @@ def _agent():
 
 
 def _task_text(brief: dict) -> str:
+    from datetime import date
+
     dest = brief.get("destination") or "the destination"
     dates = ""
     if brief.get("start_date") and brief.get("end_date"):
@@ -43,9 +45,10 @@ def _task_text(brief: dict) -> str:
         dates = f" for a {brief['duration_days']}-day trip"
     interests = ", ".join(brief.get("interests") or []) or "general sightseeing"
     return (
-        f"Research {dest}{dates}. The traveler is interested in: {interests}. "
-        f"Geocode the destination, get the weather, and find matching points of interest, "
-        f"then give a short briefing."
+        f"Today's date is {date.today().isoformat()}. Research {dest}{dates}. "
+        f"The traveler is interested in: {interests}. "
+        f"Geocode the destination, get the weather (use upcoming dates, never past years), "
+        f"and find matching points of interest, then give a short briefing."
     )
 
 

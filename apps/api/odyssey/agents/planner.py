@@ -61,9 +61,11 @@ def _num_days(brief: dict) -> int:
 
 
 def _planner_context(brief: dict, ctx: dict) -> str:
+    from datetime import date
+
     pois = ctx.get("pois") or []
     weather = ctx.get("weather") or {}
-    lines = [f"Destination: {brief.get('destination')}"]
+    lines = [f"Today: {date.today().isoformat()}", f"Destination: {brief.get('destination')}"]
     lines.append(f"Days: {_num_days(brief)} | Pace: {brief.get('pace', 'balanced')}")
     if brief.get("interests"):
         lines.append(f"Interests: {', '.join(brief['interests'])}")

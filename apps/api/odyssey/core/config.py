@@ -16,13 +16,14 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Repo root is three parents up from this file: odyssey/core/config.py -> api -> repo.
-_REPO_ROOT = Path(__file__).resolve().parents[3]
+# Repo root: config.py is at apps/api/odyssey/core/config.py, so four parents up.
+#   parents[0]=core [1]=odyssey [2]=api [3]=apps [4]=repo root
+_REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=(_REPO_ROOT / ".env", "apps/api/.env"),
+        env_file=(_REPO_ROOT / ".env", ".env", "apps/api/.env"),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
