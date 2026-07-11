@@ -37,9 +37,17 @@ async def lifespan(app: FastAPI):
         llm_configured=s.llm_configured,
         vector_backend=s.vector_backend,
     )
+    # Start event-driven proactive coordinators (weather re-planning notifications).
+    from odyssey.core.notifications import start_proactive_coordinators
+
+    start_proactive_coordinators()
     yield
+    from odyssey.core.events import shutdown_event_bus
+    from odyssey.core.notifications import stop_proactive_coordinators
     from odyssey.graph.runtime import shutdown_runtime
 
+    await stop_proactive_coordinators()
+    await shutdown_event_bus()
     await shutdown_runtime()
     log.info("shutdown")
 
@@ -113,6 +121,13 @@ def create_app() -> FastAPI:
         app.include_router(sessions_router.router, prefix="/api")
     except Exception as e:  # pragma: no cover
         log.warning("router.sessions.skipped", error=str(e))
+
+    try:
+        from odyssey.api import notifications as notifications_router
+
+        app.include_router(notifications_router.router, prefix="/api")
+    except Exception as e:  # pragma: no cover
+        log.warning("router.notifications.skipped", error=str(e))
 
     return app
 

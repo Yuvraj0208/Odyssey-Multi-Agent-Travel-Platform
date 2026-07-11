@@ -84,6 +84,10 @@ class ItineraryItem(BaseModel):
     booking_ref: str | None = None
     weather_note: str | None = None
     tags: list[str] = Field(default_factory=list)
+    # Logistics annotations: travel to the next stop in the day.
+    transit_to_next_min: float | None = None
+    transit_to_next_km: float | None = None
+    transit_mode: str | None = None
 
 
 class ItineraryDay(BaseModel):
@@ -91,6 +95,8 @@ class ItineraryDay(BaseModel):
     date: _dt.date | None = None
     summary: str | None = None
     items: list[ItineraryItem] = Field(default_factory=list)
+    travel_min: float | None = None  # total intra-day travel (logistics)
+    feasible: bool | None = None
 
     @property
     def estimated_cost(self) -> float:

@@ -23,12 +23,24 @@ def test_merge_brief_does_not_clobber_with_empty_lists():
     assert merged["destination"] == "Lisbon"
 
 
-def test_heuristic_routing_progression():
+def test_heuristic_pipeline_progression():
+    from odyssey.agents import bootstrap_agents
+    from odyssey.agents.base import LOGISTICS, MEMORY
+
+    bootstrap_agents()  # registers memory + logistics
+
     # no destination -> ask user (done)
     assert _heuristic_next({}, {}, None) == DONE
-    # destination, no research -> destination intelligence
-    assert _heuristic_next({"destination": "Kyoto"}, {}, None) == DESTINATION
+    dest = {"destination": "Kyoto"}
+    # destination present, nothing loaded -> memory first (personalize before planning)
+    assert _heuristic_next(dest, {}, None) == MEMORY
+    # memory loaded, no research -> destination intelligence
+    assert _heuristic_next(dest, {"memory_loaded": True}, None) == DESTINATION
     # research done, no itinerary -> planner
-    assert _heuristic_next({"destination": "Kyoto"}, {"research_done": True}, None) == PLANNER
-    # itinerary exists -> done
-    assert _heuristic_next({"destination": "Kyoto"}, {"research_done": True}, {"days": []}) == DONE
+    assert _heuristic_next(dest, {"memory_loaded": True, "research_done": True}, None) == PLANNER
+    # itinerary exists but not validated -> logistics
+    ctx = {"memory_loaded": True, "research_done": True}
+    assert _heuristic_next(dest, ctx, {"days": []}) == LOGISTICS
+    # everything done -> done
+    ctx2 = {"memory_loaded": True, "research_done": True, "logistics_done": True}
+    assert _heuristic_next(dest, ctx2, {"days": []}) == DONE

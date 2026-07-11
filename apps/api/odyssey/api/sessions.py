@@ -59,3 +59,19 @@ async def get_session_state(session_id: str, user: CurrentUser = Depends(current
         "interrupted": bool(snapshot and snapshot.next),
         "pending_bookings": values.get("pending_bookings", []),
     }
+
+
+@router.post("/sessions/{session_id}/recheck")
+async def recheck_conditions(session_id: str, user: CurrentUser = Depends(current_user)) -> dict:
+    """Re-evaluate live conditions (weather) against the saved itinerary and publish
+    proactive notifications for any newly adverse outdoor days."""
+    from odyssey.proactive.monitor import check_conditions
+
+    runtime = await get_runtime()
+    snapshot = await runtime.graph.aget_state({"configurable": {"thread_id": session_id}})
+    values = (snapshot.values if snapshot else {}) or {}
+    if not values.get("itinerary"):
+        return {"issues": 0, "detail": "no itinerary yet"}
+    values = {**values, "user_id": user.id, "session_id": session_id}
+    issues = await check_conditions(values, publish=True)
+    return {"issues": len(issues), "days": [i["day"] for i in issues]}

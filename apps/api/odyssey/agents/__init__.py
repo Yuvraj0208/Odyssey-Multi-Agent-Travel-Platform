@@ -15,6 +15,11 @@ def bootstrap_agents() -> None:
     if _BOOTSTRAPPED:
         return
     # Import for registration side effects. Order is irrelevant (loose coupling).
-    from odyssey.agents import destination, planner  # noqa: F401
+    from odyssey.agents import (  # noqa: F401
+        destination,
+        logistics,
+        memory,
+        planner,
+    )
 
     _BOOTSTRAPPED = True

@@ -18,11 +18,14 @@ from pydantic import BaseModel, Field
 
 from odyssey.agents.base import (
     DESTINATION,
+    LOGISTICS,
+    MEMORY,
     PLANNER,
     SUPERVISOR,
     agent_config,
     handoff_event,
     safe_structured,
+    tool_event,
 )
 from odyssey.core.logging import get_logger
 from odyssey.graph.registry import AGENT_REGISTRY, registry_descriptions
@@ -35,7 +38,7 @@ from odyssey.providers.llm_provider import get_chat_model
 
 log = get_logger(__name__)
 
-MAX_HOPS = 6
+MAX_HOPS = 8
 DONE = "done"
 
 
@@ -89,15 +92,27 @@ def _merge_brief(existing: dict | None, ex: BriefExtract) -> dict:
 def _heuristic_next(brief: dict, ctx: dict, itinerary: dict | None) -> str:
     if not brief.get("destination"):
         return DONE
+    if MEMORY in AGENT_REGISTRY and not ctx.get("memory_loaded"):
+        return MEMORY
     if not ctx.get("research_done"):
         return DESTINATION
     if not itinerary:
         return PLANNER
+    if LOGISTICS in AGENT_REGISTRY and not ctx.get("logistics_done"):
+        return LOGISTICS
     return DONE
 
 
 def _valid_targets() -> set[str]:
     return set(AGENT_REGISTRY.keys()) | {DONE}
+
+
+_DEFAULT_REASONS = {
+    MEMORY: "recalling your saved preferences before planning",
+    DESTINATION: "gathering destination facts, weather, and points of interest",
+    PLANNER: "building the day-by-day itinerary",
+    LOGISTICS: "validating day-of timing and travel between stops",
+}
 
 
 async def supervisor_node(state: dict) -> dict:
@@ -143,20 +158,32 @@ async def supervisor_node(state: dict) -> dict:
         llm, RouteDecision, [SystemMessage(content=route_prompt)], agent=SUPERVISOR
     )
 
-    next_agent = decision.next_agent if decision else heuristic
-    reason = decision.reason if decision else "routing by rule"
+    llm_choice = decision.next_agent if decision else None
+    llm_reason = decision.reason if decision else None
 
-    # Hard guardrails (production supervisors always keep these rails).
-    counts = dict(ctx.get("_route_counts") or {})
-    if next_agent not in _valid_targets():
-        next_agent, reason = heuristic, f"'{next_agent}' is not a known agent; routing by rule"
+    # Route counts are per-turn: reset on the first supervisor pass (hops == 0).
+    counts = {} if hops == 0 else dict(ctx.get("_route_counts") or {})
+
+    # The forward pipeline (memory -> research -> plan -> logistics) is deterministic
+    # so steps never get skipped or duplicated. The LLM decides only at the completion
+    # point, where a fresh user request may legitimately re-engage a specialist.
+    if heuristic != DONE:
+        next_agent = heuristic
+        reason = llm_reason if llm_choice == heuristic else _DEFAULT_REASONS.get(heuristic, "continuing")
+    elif llm_choice in AGENT_REGISTRY and counts.get(llm_choice, 0) < 1:
+        next_agent = llm_choice
+        reason = llm_reason or f"following up with {llm_choice}"
+    else:
+        next_agent = DONE
+        reason = llm_reason or "the plan is complete"
+
+    # Hard safety rails (always kept).
     if next_agent != DONE and not brief.get("destination"):
         next_agent, reason = DONE, "need a destination from the traveler first"
     if hops >= MAX_HOPS:
         next_agent, reason = DONE, "reached the work limit for this turn"
     if next_agent != DONE and counts.get(next_agent, 0) >= 2:
-        next_agent = heuristic if heuristic != next_agent else DONE
-        reason = f"already consulted {reason.split()[0] if reason else next_agent}; moving on"
+        next_agent, reason = DONE, "already consulted that specialist; wrapping up"
 
     # 3a. Route to a specialist.
     if next_agent != DONE:
@@ -176,6 +203,26 @@ async def supervisor_node(state: dict) -> dict:
     content = final.content if isinstance(final.content, str) else str(final.content)
     updates["next_agent"] = DONE
     updates["messages"] = [AIMessage(content=content, name=SUPERVISOR)]
+
+    # Write salient, durable traveler facts to long-term memory at end-of-turn.
+    if itinerary:
+        try:
+            from langgraph.config import get_store
+
+            from odyssey.memory.store_repo import extract_and_store
+
+            store = get_store()
+            if store is not None:
+                stored = await extract_and_store(
+                    store, state.get("user_id", ""), messages, brief
+                )
+                if stored:
+                    updates.setdefault("tool_events", []).append(
+                        tool_event(SUPERVISOR, "save_memory", f"{len(stored)} facts remembered", True, 0)
+                    )
+        except Exception as e:  # never let memory writes break the turn
+            log.warning("memory.write_failed", error=str(e))
+
     log.info("supervisor.done", has_itinerary=bool(itinerary))
     return updates
 

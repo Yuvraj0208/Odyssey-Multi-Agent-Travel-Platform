@@ -69,6 +69,8 @@ def _planner_context(brief: dict, ctx: dict) -> str:
     lines.append(f"Days: {_num_days(brief)} | Pace: {brief.get('pace', 'balanced')}")
     if brief.get("interests"):
         lines.append(f"Interests: {', '.join(brief['interests'])}")
+    if ctx.get("preferences"):
+        lines.append("Known traveler preferences (personalize to these): " + "; ".join(ctx["preferences"]))
     if brief.get("budget", {}).get("total"):
         lines.append(f"Budget total: {brief['budget']['total']} {brief['budget'].get('currency', 'USD')}")
     if weather.get("days"):
@@ -192,6 +194,8 @@ async def planner_node(state: dict) -> dict:
     return {
         "itinerary": itinerary.model_dump(mode="json"),
         "messages": [AIMessage(content=note or "Here is a draft itinerary.", name=PLANNER)],
+        # A fresh plan needs re-validation by logistics.
+        "context": {"logistics_done": False},
         "active_agent": PLANNER,
     }
 
