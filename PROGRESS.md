@@ -11,8 +11,8 @@ Legend: [x] done and verified, [~] in progress, [ ] not started.
 - [x] 3. Beautiful itinerary on an interactive map + day-by-day timeline, grounded
       in real open tourism data (weather, POIs). (Premium polish continues Phase 4.)
 - [ ] 4. Flight/hotel/activity options; explicit approval before any booking. (Phase 3)
-- [~] 5. Resume the same conversation later (checkpointer verified); long-term
-      preference memory lands in Phase 2.
+- [x] 5. Resume the same conversation later (checkpointer verified); long-term
+      preference memory now recalls across sessions (Phase 2, verified live).
 - [~] 6. Runs locally (local mode verified); one-command docker + full tracing/
       metrics wired, end-to-end stack run pending a Docker host.
 
@@ -67,8 +67,9 @@ Legend: [x] done and verified, [~] in progress, [ ] not started.
       endpoint (?demo=true to exercise the path when weather is benign)
 - [x] 6 Phase-2 tests (21 total). Verified via script: memory persists + recalls
       across sessions; logistics OSRM timing; pipeline order
-- [ ] Verify LIVE in browser (notifications toast + inbox, transit UI) - pending
-      backend restart
+- [x] Verified LIVE in browser: 5-agent mission control; memory recall; OSRM
+      transit legs + per-day feasibility; real weather re-check -> 2 proactive
+      notifications (bell + toast) -> one-click re-plan routes to planner correctly
 
 ## Phase 3 - Bookings + HITL
 
