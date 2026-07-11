@@ -31,18 +31,21 @@ Legend: [x] done and verified, [~] in progress, [ ] not started.
 
 ## Phase 1 - Vertical slice
 
-- [ ] TravelState + reducers
-- [ ] Agent registry + Handoff protocol
-- [ ] Supervisor node (registry-driven routing)
-- [ ] Trip Planning agent (subgraph)
-- [ ] Destination Intelligence agent (subgraph)
-- [ ] Tools: Open-Meteo, OpenTripMap/Overpass, Nominatim
-- [ ] Checkpointer + store factories (local SQLite / stack Postgres)
-- [ ] SSE streaming endpoint (astream_events v2 -> UI events)
-- [ ] Resume endpoint / thread resume
-- [ ] Next.js chat UI with streaming
-- [ ] Itinerary render + MapLibre map
-- [ ] Verify: trip request -> two agents collaborate -> map itinerary -> resume
+- [x] TravelState + reducers
+- [x] Agent registry + Handoff protocol
+- [x] Supervisor node (registry-driven routing + guardrails)
+- [x] Trip Planning agent (structured output + real-POI geo attachment)
+- [x] Destination Intelligence agent (ReAct tool-calling subgraph)
+- [x] Tools: Open-Meteo geocoding+weather, Overpass POIs (verified live)
+- [x] Checkpointer + store factories (local SQLite / stack Postgres)
+- [x] SSE streaming endpoint (astream_events v2 -> UI events)
+- [x] Resume endpoint / thread resume (state rehydration via /sessions/{id}/state)
+- [x] Next.js chat UI with streaming (three-region workspace)
+- [x] Itinerary render + MapLibre map (markers, bounds, selection sync)
+- [x] Mission-control agent rail + telemetry (Phase 4 will elevate to node-graph)
+- [x] Backend test suite (15 tests, deterministic core logic) passing
+- [ ] Verify LIVE: trip request -> two agents collaborate -> map itinerary ->
+      resume after restart (BLOCKED: needs GROQ_API_KEY in .env)
 
 ## Phase 2 - More agents + memory
 

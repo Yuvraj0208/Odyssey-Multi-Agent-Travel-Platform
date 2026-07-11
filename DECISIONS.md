@@ -58,6 +58,24 @@ One line of reasoning per choice. Newest at the bottom of each section.
   fallback (no key). Geocoding: Nominatim (OSM). Reason: all open, no paid source;
   Overpass fallback means POIs still work with zero keys configured.
 
+## Phase 1 runtime fixes (learned by running)
+
+- Geocoding: Open-Meteo geocoding API is the PRIMARY, Nominatim the fallback.
+  Reason: Nominatim returns 403 to non-browser/app user agents and rate-limits
+  hard; Open-Meteo geocoding is keyless, reliable, and same-provider as weather.
+- Overpass: POST the query as form body, send an app-identifying User-Agent, and
+  round-robin four public mirrors with a PER-MIRROR circuit breaker. Reason: the
+  default python-httpx UA gets 406, and a single shared breaker would let one bad
+  mirror block the others.
+- Dark basemap: invert only the MapLibre WebGL canvas via CSS filter. Reason:
+  OpenFreeMap has no official dark style; HTML markers/popups are siblings of the
+  canvas so they stay upright and correctly colored.
+- SSE consumed via fetch + ReadableStream reader, not EventSource. Reason: the
+  chat stream endpoint is a POST (carries the message body); EventSource is GET-only.
+- Langgraph/langchain resolved to 1.x (not the spec's 0.2.x). Kept astream_events
+  version="v2" (still supported) and used create_react_agent(state_schema=...) plus
+  tag-based per-agent attribution for the stream mapper.
+
 ## Frontend
 
 - Next.js 15 App Router + React 19 + TS, Tailwind + shadcn/ui, Framer Motion,
