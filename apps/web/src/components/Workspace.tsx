@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createSession, getAgents, getSessionState } from "@/lib/api";
+import { createSession, getAgents, getHealth, getSessionState } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { Header } from "./Header";
 import { ChatPanel } from "./ChatPanel";
@@ -19,9 +19,12 @@ import { cn } from "@/lib/utils";
 
 const SESSION_KEY = "odyssey-session";
 
+export type BackendState = "checking" | "waking" | "ready" | "offline";
+
 export function Workspace() {
   const { setSession, setAgents, hydrate, reset } = useStore();
   const [ready, setReady] = useState(false);
+  const [backend, setBackend] = useState<BackendState>("checking");
   const [railOpen, setRailOpen] = useState(true);
   const [libraryTab, setLibraryTab] = useState<LibraryTab | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
@@ -40,6 +43,23 @@ export function Workspace() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Free-tier hosts sleep when idle and can take ~50s to wake, so poll health
+      // before giving up and tell the user what's happening instead of hanging.
+      let alive = await getHealth();
+      if (!alive) {
+        setBackend("waking");
+        for (let i = 0; i < 12 && !alive && !cancelled; i++) {
+          await new Promise((r) => setTimeout(r, 5000));
+          alive = await getHealth();
+        }
+      }
+      if (cancelled) return;
+      if (!alive) {
+        setBackend("offline");
+        return;
+      }
+      setBackend("ready");
+
       const agents = await getAgents().catch(() => []);
       if (!cancelled && agents.length) setAgents(agents);
 
@@ -97,7 +117,7 @@ export function Workspace() {
       <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(360px,0.9fr)_1.3fr] xl:grid-cols-[minmax(380px,0.85fr)_1.35fr_minmax(300px,0.55fr)]">
         {/* Left: conversation */}
         <section className="min-h-0 border-r border-border">
-          <ChatPanel ready={ready} />
+          <ChatPanel ready={ready} backend={backend} />
         </section>
 
         {/* Center: map + timeline canvas */}

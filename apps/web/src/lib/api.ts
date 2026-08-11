@@ -36,6 +36,17 @@ export async function createSession(): Promise<string> {
   return j.session_id as string;
 }
 
+/** Liveness ping. Free-tier hosts sleep when idle, so this may take ~50s to answer
+ *  on the first request while the instance wakes. */
+export async function getHealth(signal?: AbortSignal): Promise<boolean> {
+  try {
+    const r = await fetch(`${BASE}/health`, { signal, cache: "no-store" });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
 export interface AuthResult {
   access_token: string;
   user: { id: string; email: string; name?: string | null };

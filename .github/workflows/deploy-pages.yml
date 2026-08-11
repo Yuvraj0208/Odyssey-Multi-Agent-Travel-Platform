@@ -42,6 +42,10 @@ jobs:
           STATIC_EXPORT: "1"
           # Project pages are served from /<repo>/, so assets need the prefix.
           NEXT_PUBLIC_BASE_PATH: /Odyssey-Multi-Agent-Travel-Platform
+          # Backend the published app talks to. Override by setting a repository
+          # variable named API_BASE_URL (Settings -> Secrets and variables ->
+          # Actions -> Variables) if your Render service has a different name.
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.API_BASE_URL || 'https://odyssey-api.onrender.com' }}
           NEXT_TELEMETRY_DISABLED: "1"
         run: npm run build
       - name: Disable Jekyll (keep _next/)

@@ -90,7 +90,12 @@ class Settings(BaseSettings):
     auth_required: bool = Field(default=False, alias="AUTH_REQUIRED")
 
     # ---- CORS ----
-    cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")
+    # Comma-separated browser origins allowed to call the API. Defaults cover local
+    # dev plus the published GitHub Pages site.
+    cors_origins: str = Field(
+        default="http://localhost:3000,https://yuvraj0208.github.io",
+        alias="CORS_ORIGINS",
+    )
 
     # ---- Derived helpers ----
     @property

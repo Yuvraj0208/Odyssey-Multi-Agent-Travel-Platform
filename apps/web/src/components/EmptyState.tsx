@@ -1,8 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Globe2, Map, Compass, ArrowRight } from "lucide-react";
+import { ArrowRight, Compass, Globe2, Loader2, Map, PlugZap } from "lucide-react";
 import { useChatStream } from "@/hooks/useChatStream";
+import type { BackendState } from "./Workspace";
 
 const EXAMPLES = [
   "Plan a relaxed 3-day trip to Kyoto in April. I love temples, gardens, and great food. Mid-range budget.",
@@ -10,7 +11,7 @@ const EXAMPLES = [
   "A packed long weekend in Barcelona - architecture, tapas, and the beach. Late September.",
 ];
 
-export function EmptyState({ ready }: { ready: boolean }) {
+export function EmptyState({ ready, backend }: { ready: boolean; backend: BackendState }) {
   const { send } = useChatStream();
 
   return (
@@ -52,11 +53,39 @@ export function EmptyState({ ready }: { ready: boolean }) {
           ))}
         </div>
 
-        <div className="mt-6 flex items-center justify-center gap-2 text-[11px] text-faint">
-          <span className={`h-1.5 w-1.5 rounded-full ${ready ? "bg-success" : "bg-warning animate-pulse"}`} />
-          {ready ? "Agents ready" : "Connecting to the agent team..."}
-        </div>
+        <BackendNotice ready={ready} backend={backend} />
       </motion.div>
+    </div>
+  );
+}
+
+function BackendNotice({ ready, backend }: { ready: boolean; backend: BackendState }) {
+  if (backend === "waking") {
+    return (
+      <div className="mx-auto mt-6 flex max-w-sm items-start gap-2.5 rounded-xl border border-warning/25 bg-warning/[0.08] px-3.5 py-3 text-left">
+        <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-warning" />
+        <div className="text-[12px] leading-relaxed text-muted">
+          <span className="font-medium text-fg">Waking the agents up.</span> The demo backend
+          sleeps when idle, so the first visit takes up to a minute. Hang tight.
+        </div>
+      </div>
+    );
+  }
+  if (backend === "offline") {
+    return (
+      <div className="mx-auto mt-6 flex max-w-sm items-start gap-2.5 rounded-xl border border-danger/25 bg-danger/[0.08] px-3.5 py-3 text-left">
+        <PlugZap className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
+        <div className="text-[12px] leading-relaxed text-muted">
+          <span className="font-medium text-fg">Backend unreachable.</span> Reload to retry, or run
+          it locally with <code className="rounded bg-surface-2 px-1">docker compose up</code>.
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-6 flex items-center justify-center gap-2 text-[11px] text-faint">
+      <span className={`h-1.5 w-1.5 rounded-full ${ready ? "bg-success" : "bg-warning animate-pulse"}`} />
+      {ready ? "Agents ready" : "Connecting to the agent team..."}
     </div>
   );
 }
