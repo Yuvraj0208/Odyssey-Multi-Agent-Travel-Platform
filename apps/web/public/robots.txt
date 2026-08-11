@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://yuvraj0208.github.io/Odyssey-Multi-Agent-Travel-Platform/sitemap.xml
