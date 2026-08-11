@@ -8,9 +8,10 @@
 
 <br/>
 
-### [🌍 View the live site →](https://yuvraj0208.github.io/Odyssey-Multi-Agent-Travel-Platform/)
+### [🌍 Try the live demo →](https://yuvraj0208.github.io/Odyssey-Multi-Agent-Travel-Platform/app/)
 
-[![Live](https://img.shields.io/badge/live-demo-14b8a6?logo=googlechrome&logoColor=white)](https://yuvraj0208.github.io/Odyssey-Multi-Agent-Travel-Platform/)
+[![Live](https://img.shields.io/badge/live-demo-14b8a6?logo=googlechrome&logoColor=white)](https://yuvraj0208.github.io/Odyssey-Multi-Agent-Travel-Platform/app/)
+[![API](https://img.shields.io/badge/API-live-6366f1?logo=fastapi&logoColor=white)](https://odyssey-api-z161.onrender.com/docs)
 [![CI](https://github.com/Yuvraj0208/Odyssey-Multi-Agent-Travel-Platform/actions/workflows/ci.yml/badge.svg)](https://github.com/Yuvraj0208/Odyssey-Multi-Agent-Travel-Platform/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
 ![LangGraph](https://img.shields.io/badge/LangGraph-1.x-1C3C3C?logo=langchain&logoColor=white)
