@@ -30,6 +30,7 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
+        display: ["var(--font-display)", "Georgia", "serif"],
       },
       borderRadius: {
         lg: "0.75rem",
@@ -56,11 +57,34 @@ const config: Config = {
           "70%": { boxShadow: "0 0 0 8px rgb(var(--accent) / 0)" },
           "100%": { boxShadow: "0 0 0 0 rgb(var(--accent) / 0)" },
         },
+        // Landing: slow cinematic drift on hero photography
+        kenburns: {
+          "0%": { transform: "scale(1.06) translate3d(0, 0, 0)" },
+          "100%": { transform: "scale(1.18) translate3d(-1.5%, -1.5%, 0)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        aurora: {
+          "0%, 100%": { transform: "translate(-8%, -4%) scale(1)" },
+          "33%": { transform: "translate(6%, 4%) scale(1.12)" },
+          "66%": { transform: "translate(-4%, 8%) scale(0.95)" },
+        },
+        "scroll-hint": {
+          "0%": { transform: "translateY(0)", opacity: "0" },
+          "35%": { opacity: "1" },
+          "100%": { transform: "translateY(12px)", opacity: "0" },
+        },
       },
       animation: {
         "fade-up": "fade-up 0.35s cubic-bezier(0.22, 1, 0.36, 1)",
         shimmer: "shimmer 2s linear infinite",
         "pulse-ring": "pulse-ring 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite",
+        kenburns: "kenburns 26s ease-in-out infinite alternate",
+        float: "float 6s ease-in-out infinite",
+        aurora: "aurora 22s ease-in-out infinite",
+        "scroll-hint": "scroll-hint 2s ease-out infinite",
       },
     },
   },
