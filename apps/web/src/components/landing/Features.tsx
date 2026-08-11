@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { Reveal } from "./Reveal";
 import {
   Bell,
   Brain,
@@ -117,11 +118,9 @@ export function Features() {
             title="It watches the forecast so you don't have to"
             sub="If rain moves in on a day you planned outdoors, Odyssey tells you — and re-plans in one click."
           />
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.3, duration: 0.6 }}
+          <Reveal
+            delay={0.3}
+            y={12}
             className="mt-5 flex items-start gap-3 rounded-xl border border-amber-300/20 bg-amber-400/[0.07] p-3.5"
           >
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-400/15 text-amber-300">
@@ -137,7 +136,7 @@ export function Features() {
                 <Sparkles className="h-3 w-3" /> Ask agents to fix it
               </span>
             </div>
-          </motion.div>
+          </Reveal>
         </Tile>
       </div>
     </section>
@@ -154,15 +153,13 @@ function Tile({
   delay?: number;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
+    <Reveal
+      delay={delay}
+      y={24}
       className={`rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.055] to-white/[0.015] p-6 backdrop-blur-sm ${className}`}
     >
       {children}
-    </motion.div>
+    </Reveal>
   );
 }
 

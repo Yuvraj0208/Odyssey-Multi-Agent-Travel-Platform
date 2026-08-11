@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { Reveal } from "./Reveal";
 
 const STATS = [
   { value: "7", label: "specialized agents", sub: "collaborating live" },
@@ -14,20 +14,13 @@ export function StatBand() {
     <section className="relative border-y border-white/[0.07] bg-white/[0.02]">
       <div className="mx-auto grid max-w-6xl grid-cols-2 gap-y-8 px-6 py-12 sm:py-14 lg:grid-cols-4">
         {STATS.map((s, i) => (
-          <motion.div
-            key={s.label}
-            initial={{ opacity: 0, y: 14 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-40px" }}
-            transition={{ duration: 0.6, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
-            className="text-center"
-          >
+          <Reveal key={s.label} delay={i * 0.08} y={14} className="text-center">
             <div className="font-display text-[clamp(1.9rem,4vw,2.6rem)] font-medium leading-none text-white">
               {s.value}
             </div>
             <div className="mt-2 text-[12.5px] font-medium text-white/70">{s.label}</div>
             <div className="text-[11px] text-white/35">{s.sub}</div>
-          </motion.div>
+          </Reveal>
         ))}
       </div>
     </section>

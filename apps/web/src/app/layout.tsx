@@ -36,6 +36,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* Scroll-reveal animations start at opacity 0. Without JS (crawlers,
+            JS disabled) nothing would ever reveal them, so show everything. */}
+        <noscript>
+          <style>{`[style*="opacity:0"]{opacity:1!important;transform:none!important}`}</style>
+        </noscript>
       </head>
       <body className="min-h-screen bg-bg text-fg antialiased">
         <Providers>{children}</Providers>

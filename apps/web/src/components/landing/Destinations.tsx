@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { Reveal } from "./Reveal";
 import { ArrowUpRight } from "lucide-react";
 import { asset } from "@/lib/asset";
 import { SectionHeading } from "./AgentTheatre";
@@ -43,12 +43,10 @@ export function Destinations() {
 
       <div className="mt-14 grid auto-rows-[190px] grid-cols-1 gap-3 sm:grid-cols-4">
         {PLACES.map((p, i) => (
-          <motion.div
+          <Reveal
             key={p.slug}
-            initial={{ opacity: 0, y: 26 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.7, delay: (i % 3) * 0.08, ease: [0.22, 1, 0.36, 1] }}
+            delay={(i % 3) * 0.08}
+            y={26}
             className={`group relative overflow-hidden rounded-2xl border border-white/10 ${p.span}`}
           >
             <img
@@ -76,16 +74,11 @@ export function Destinations() {
                 </span>
               </div>
             </div>
-          </motion.div>
+          </Reveal>
         ))}
       </div>
 
-      <motion.div
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        className="mt-10 text-center"
-      >
+      <Reveal className="mt-10 text-center">
         <Link
           href="/app"
           className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-6 py-3 text-[14px] font-medium text-white transition hover:bg-white/[0.1]"
@@ -93,7 +86,7 @@ export function Destinations() {
           Plan any of these in about a minute
           <ArrowUpRight className="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
         </Link>
-      </motion.div>
+      </Reveal>
     </section>
   );
 }

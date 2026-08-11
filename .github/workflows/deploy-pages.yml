@@ -28,8 +28,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      # Turns Pages on for the repo if it isn't already (needs pages: write).
+      # Tries to turn Pages on automatically. The default GITHUB_TOKEN cannot create
+      # a Pages site on a repo that never had one, so this is best-effort: enable
+      # Pages once under Settings -> Pages -> Source: "GitHub Actions".
       - uses: actions/configure-pages@v5
+        continue-on-error: true
         with:
           enablement: true
       - name: Install

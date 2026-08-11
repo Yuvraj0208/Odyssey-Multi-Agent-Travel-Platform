@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { Reveal } from "./Reveal";
 import {
   ArrowRight,
   Brain,
@@ -59,12 +59,10 @@ export function AgentRoster() {
 
       <div className="mt-14 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {ROSTER.map(({ Icon, name, role, tint }, i) => (
-          <motion.div
+          <Reveal
             key={name}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ duration: 0.6, delay: (i % 3) * 0.07, ease: [0.22, 1, 0.36, 1] }}
+            delay={(i % 3) * 0.07}
+            y={20}
             className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition-colors hover:border-white/20 hover:bg-white/[0.06]"
           >
             <span className={`grid h-9 w-9 place-items-center rounded-xl bg-white/[0.07] ${tint}`}>
@@ -73,7 +71,7 @@ export function AgentRoster() {
             <h3 className="mt-4 text-[15px] font-semibold tracking-tight text-white/95">{name}</h3>
             <p className="mt-1.5 text-[12.5px] leading-relaxed text-white/50">{role}</p>
             <span className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-white/[0.05] opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100" />
-          </motion.div>
+          </Reveal>
         ))}
       </div>
     </section>
@@ -95,24 +93,14 @@ export function FinalCTA() {
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-[rgb(9,11,16)] via-transparent to-[rgb(9,11,16)]" />
 
       <div className="mx-auto max-w-3xl px-6 py-28 text-center sm:py-36">
-        <motion.h2
-          initial={{ opacity: 0, y: 22 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="text-balance font-display text-[clamp(2.1rem,5.5vw,3.6rem)] font-medium leading-[1.05] tracking-[-0.02em] text-white"
-        >
-          Tell it where you're dreaming of.
-          <br />
-          <span className="italic text-white/70">Watch the team get to work.</span>
-        </motion.h2>
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.12 }}
-          className="mt-9 flex flex-wrap items-center justify-center gap-3"
-        >
+        <Reveal>
+          <h2 className="text-balance font-display text-[clamp(2.1rem,5.5vw,3.6rem)] font-medium leading-[1.05] tracking-[-0.02em] text-white">
+            Tell it where you're dreaming of.
+            <br />
+            <span className="italic text-white/70">Watch the team get to work.</span>
+          </h2>
+        </Reveal>
+        <Reveal delay={0.12} y={16} className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/app"
             className="group inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-[15px] font-semibold text-neutral-900 transition hover:scale-[1.02]"
@@ -128,7 +116,7 @@ export function FinalCTA() {
           >
             <Github className="h-4 w-4" /> Star on GitHub
           </a>
-        </motion.div>
+        </Reveal>
         <p className="mt-6 text-[12.5px] text-white/40">
           Free and open source · runs locally · bring your own model
         </p>

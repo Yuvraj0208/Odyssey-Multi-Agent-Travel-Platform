@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Reveal } from "./Reveal";
 import {
   Brain,
   Check,
@@ -346,13 +347,7 @@ export function SectionHeading({
   center?: boolean;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-80px" }}
-      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-      className={center ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}
-    >
+    <Reveal className={center ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}>
       <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-teal-300/80">
         {eyebrow}
       </span>
@@ -360,6 +355,6 @@ export function SectionHeading({
         {title}
       </h2>
       {sub && <p className="mt-4 text-pretty text-[15px] leading-relaxed text-white/55">{sub}</p>}
-    </motion.div>
+    </Reveal>
   );
 }
