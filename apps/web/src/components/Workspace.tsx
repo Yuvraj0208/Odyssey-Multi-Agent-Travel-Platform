@@ -25,6 +25,7 @@ export function Workspace() {
   const { setSession, setAgents, hydrate, reset } = useStore();
   const [ready, setReady] = useState(false);
   const [backend, setBackend] = useState<BackendState>("checking");
+  const [connectAttempt, setConnectAttempt] = useState(0);
   const [railOpen, setRailOpen] = useState(true);
   const [libraryTab, setLibraryTab] = useState<LibraryTab | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
@@ -43,12 +44,13 @@ export function Workspace() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // Free-tier hosts sleep when idle and can take ~50s to wake, so poll health
-      // before giving up and tell the user what's happening instead of hanging.
+      // Free-tier hosts sleep when idle and a cold start can exceed a minute, so
+      // keep polling (~2 min) and say what's happening instead of hanging.
+      setBackend("checking");
       let alive = await getHealth();
       if (!alive) {
         setBackend("waking");
-        for (let i = 0; i < 12 && !alive && !cancelled; i++) {
+        for (let i = 0; i < 24 && !alive && !cancelled; i++) {
           await new Promise((r) => setTimeout(r, 5000));
           alive = await getHealth();
         }
@@ -81,7 +83,7 @@ export function Workspace() {
     return () => {
       cancelled = true;
     };
-  }, [setSession, setAgents, hydrate]);
+  }, [setSession, setAgents, hydrate, connectAttempt]);
 
   async function newTrip() {
     const sid = await createSession().catch(() => `local_${Date.now().toString(36)}`);
@@ -117,7 +119,11 @@ export function Workspace() {
       <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(360px,0.9fr)_1.3fr] xl:grid-cols-[minmax(380px,0.85fr)_1.35fr_minmax(300px,0.55fr)]">
         {/* Left: conversation */}
         <section className="min-h-0 border-r border-border">
-          <ChatPanel ready={ready} backend={backend} />
+          <ChatPanel
+            ready={ready}
+            backend={backend}
+            onRetryBackend={() => setConnectAttempt((n) => n + 1)}
+          />
         </section>
 
         {/* Center: map + timeline canvas */}

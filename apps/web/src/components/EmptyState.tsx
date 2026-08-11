@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Compass, Globe2, Loader2, Map, PlugZap } from "lucide-react";
+import { ArrowRight, Compass, Globe2, Loader2, Map, PlugZap, RefreshCw } from "lucide-react";
 import { useChatStream } from "@/hooks/useChatStream";
 import type { BackendState } from "./Workspace";
 
@@ -11,7 +11,15 @@ const EXAMPLES = [
   "A packed long weekend in Barcelona - architecture, tapas, and the beach. Late September.",
 ];
 
-export function EmptyState({ ready, backend }: { ready: boolean; backend: BackendState }) {
+export function EmptyState({
+  ready,
+  backend,
+  onRetryBackend,
+}: {
+  ready: boolean;
+  backend: BackendState;
+  onRetryBackend: () => void;
+}) {
   const { send } = useChatStream();
 
   return (
@@ -53,13 +61,21 @@ export function EmptyState({ ready, backend }: { ready: boolean; backend: Backen
           ))}
         </div>
 
-        <BackendNotice ready={ready} backend={backend} />
+        <BackendNotice ready={ready} backend={backend} onRetry={onRetryBackend} />
       </motion.div>
     </div>
   );
 }
 
-function BackendNotice({ ready, backend }: { ready: boolean; backend: BackendState }) {
+function BackendNotice({
+  ready,
+  backend,
+  onRetry,
+}: {
+  ready: boolean;
+  backend: BackendState;
+  onRetry: () => void;
+}) {
   if (backend === "waking") {
     return (
       <div className="mx-auto mt-6 flex max-w-sm items-start gap-2.5 rounded-xl border border-warning/25 bg-warning/[0.08] px-3.5 py-3 text-left">
@@ -76,8 +92,22 @@ function BackendNotice({ ready, backend }: { ready: boolean; backend: BackendSta
       <div className="mx-auto mt-6 flex max-w-sm items-start gap-2.5 rounded-xl border border-danger/25 bg-danger/[0.08] px-3.5 py-3 text-left">
         <PlugZap className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
         <div className="text-[12px] leading-relaxed text-muted">
-          <span className="font-medium text-fg">Backend unreachable.</span> Reload to retry, or run
-          it locally with <code className="rounded bg-surface-2 px-1">docker compose up</code>.
+          <span className="font-medium text-fg">Couldn&apos;t reach the agents.</span> The demo
+          backend may still be waking up.
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <button
+              onClick={onRetry}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1.5 text-[11.5px] font-medium text-accent-fg transition hover:opacity-90"
+            >
+              <RefreshCw className="h-3 w-3" /> Try again
+            </button>
+            <button
+              onClick={() => location.reload()}
+              className="rounded-lg border border-border px-2.5 py-1.5 text-[11.5px] text-muted transition hover:text-fg"
+            >
+              Hard reload
+            </button>
+          </div>
         </div>
       </div>
     );

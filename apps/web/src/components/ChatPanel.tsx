@@ -9,7 +9,15 @@ import { EmptyState } from "./EmptyState";
 import type { BackendState } from "./Workspace";
 import { AlertTriangle } from "lucide-react";
 
-export function ChatPanel({ ready, backend }: { ready: boolean; backend: BackendState }) {
+export function ChatPanel({
+  ready,
+  backend,
+  onRetryBackend,
+}: {
+  ready: boolean;
+  backend: BackendState;
+  onRetryBackend: () => void;
+}) {
   const messages = useStore((s) => s.messages);
   const streaming = useStore((s) => s.streaming);
   const errorBanner = useStore((s) => s.errorBanner);
@@ -27,7 +35,7 @@ export function ChatPanel({ ready, backend }: { ready: boolean; backend: Backend
     <div className="flex h-full min-h-0 flex-col">
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
         {empty ? (
-          <EmptyState ready={ready} backend={backend} />
+          <EmptyState ready={ready} backend={backend} onRetryBackend={onRetryBackend} />
         ) : (
           <div className="mx-auto flex max-w-2xl flex-col gap-5 px-5 py-6">
             <AnimatePresence initial={false}>
